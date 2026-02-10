@@ -89,35 +89,23 @@
             </a>
           </li>
           <li class="nav-item">
-            <a href="{{ route('attendance.index') }}" class="nav-link {{ request()->is('attendance*') ? 'active' : '' }}">
-              <i class="nav-icon fas fa-calendar-check"></i>
-              <p>Absensi</p>
+            <a href="{{ route('attendance.index') }}" class="nav-link {{ request()->is('attendance') || request()->is('attendance/index') ? 'active' : '' }}">
+              <i class="nav-icon fas fa-calendar-alt"></i>
+              <p>Riwayat Absensi</p>
             </a>
           </li>
+          @if(Auth::user()->role->name == 'hrd' || Auth::user()->role->name == 'admin')
+          <li class="nav-item">
+            <a href="{{ route('attendance.monitoring') }}" class="nav-link {{ request()->is('attendance/monitoring*') || request()->is('attendance/history*') ? 'active' : '' }}">
+              <i class="nav-icon fas fa-desktop"></i>
+              <p>Monitoring Absensi</p>
+            </a>
+          </li>
+          @endif
           <li class="nav-item">
             <a href="{{ route('payroll.index') }}" class="nav-link {{ request()->is('payroll*') ? 'active' : '' }}">
               <i class="nav-icon fas fa-money-bill-wave"></i>
               <p>Payroll</p>
-            </a>
-          </li>
-
-          <li class="nav-header">REKRUTMEN</li>
-          <li class="nav-item">
-            <a href="{{ route('jobvacancie.index') }}" class="nav-link {{ request()->is('jobvacancie*') ? 'active' : '' }}">
-              <i class="nav-icon fas fa-briefcase"></i>
-              <p>Lowongan Kerja</p>
-            </a>
-          </li>
-          <li class="nav-item">
-            <a href="{{ route('jobapplicant.index') }}" class="nav-link {{ request()->is('jobapplicant*') ? 'active' : '' }}">
-              <i class="nav-icon fas fa-user-tie"></i>
-              <p>Pelamar</p>
-            </a>
-          </li>
-          <li class="nav-item">
-            <a href="{{ route('selection.index') }}" class="nav-link {{ request()->is('selection*') ? 'active' : '' }}">
-              <i class="nav-icon fas fa-tasks"></i>
-              <p>Proses Seleksi</p>
             </a>
           </li>
 

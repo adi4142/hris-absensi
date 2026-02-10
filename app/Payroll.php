@@ -20,4 +20,13 @@ class Payroll extends Model
     {
         return $this->hasMany(PayrollDetail::class, 'payroll_id', 'payroll_id');
     }
+
+    /**
+     * Menghitung Gaji Bersih
+     * Rumus: (Gaji Pokok + Tunjangan) - Potongan
+     */
+    public function hitungGajiBersih($gajiPokok, $potongan, $tunjangan = 0)
+    {
+        return ($gajiPokok + $tunjangan) - $potongan;
+    }
 }

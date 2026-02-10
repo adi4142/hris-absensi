@@ -8,9 +8,11 @@
     <div class="card-header">
         <h3 class="card-title">Daftar Periode Gaji</h3>
         <div class="card-tools">
+            @if(auth()->user()->role->name == 'admin')
             <a href="{{ route('payroll.create') }}" class="btn btn-primary btn-sm">
                 <i class="fas fa-plus"></i> Tambah Periode
             </a>
+            @endif
         </div>
     </div>
     <div class="card-body">
@@ -45,6 +47,7 @@
                                 <a href="{{ route('payroll.show', $v->payroll_id) }}" class="btn btn-info btn-sm" title="Lihat Detail">
                                     <i class="fas fa-eye"></i>
                                 </a>
+                                @if(auth()->user()->role->name == 'admin')
                                 <a href="{{ route('payroll.edit', $v->payroll_id) }}" class="btn btn-warning btn-sm" title="Edit">
                                     <i class="fas fa-edit"></i>
                                 </a>
@@ -55,6 +58,7 @@
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </form>
+                                @endif
                             </div>
                         </td>
                     </tr>

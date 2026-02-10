@@ -16,7 +16,9 @@ class Attendance extends Model
         'photo_out',
         'location_in',
         'location_out',
-        'status'
+        'status',
+        'description',
+        'proof_file'
     ];
 
     public function employee()

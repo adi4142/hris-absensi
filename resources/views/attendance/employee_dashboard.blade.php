@@ -14,8 +14,8 @@
     </div>
 </div>
 
+<!-- Stats Cards -->
 <div class="row">
-    <!-- Stats Cards -->
     <div class="col-lg-3 col-6">
         <div class="small-box bg-info">
             <div class="inner">
@@ -37,7 +37,7 @@
             <div class="icon">
                 <i class="fas fa-clipboard-list"></i>
             </div>
-             <a href="{{ route('attendance.history') }}" class="small-box-footer">Lihat Detail <i class="fas fa-arrow-circle-right"></i></a>
+             <a href="{{ route('attendance.history', ['status' => 'Late']) }}" class="small-box-footer">Lihat Detail <i class="fas fa-arrow-circle-right"></i></a>
         </div>
     </div>
     <div class="col-lg-3 col-6">
@@ -49,7 +49,7 @@
             <div class="icon">
                 <i class="far fa-calendar-alt"></i>
             </div>
-             <a href="{{ route('attendance.history') }}" class="small-box-footer">Lihat Detail <i class="fas fa-arrow-circle-right"></i></a>
+             <a href="{{ route('attendance.history', ['status' => 'Permission']) }}" class="small-box-footer">Lihat Detail <i class="fas fa-arrow-circle-right"></i></a>
         </div>
     </div>
     <div class="col-lg-3 col-6">
@@ -61,106 +61,153 @@
             <div class="icon">
                 <i class="fas fa-times-circle"></i>
             </div>
-             <a href="{{ route('attendance.history') }}" class="small-box-footer">Lihat Detail <i class="fas fa-arrow-circle-right"></i></a>
+             <a href="{{ route('attendance.history', ['status' => 'Alpha']) }}" class="small-box-footer">Lihat Detail <i class="fas fa-arrow-circle-right"></i></a>
         </div>
     </div>
 </div>
 
 <div class="row">
-    <!-- Today's Status -->
-    <div class="col-md-6">
-        <div class="card card-primary card-outline h-100">
+    <!-- Left Column: Action & Today's Status -->
+    <div class="col-lg-5">
+        <div class="card card-primary card-outline">
             <div class="card-header">
                 <h3 class="card-title">Absensi Hari Ini</h3>
             </div>
-            <div class="card-body box-profile d-flex flex-column justify-content-center">
-                <div class="text-center">
-                    @if($todayAttendance)
-                        @if($todayAttendance->status == 'Late')
-                             <div class="icon-circle bg-warning mb-3" style="width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
-                                <i class="fas fa-exclamation-triangle fa-3x text-white"></i>
-                            </div>
-                        @else
-                             <div class="icon-circle bg-success mb-3" style="width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
-                                <i class="far fa-check-circle fa-3x text-white"></i>
-                            </div>
-                        @endif
-                        
-                        <h3 class="profile-username text-center">{{ $todayAttendance->status == 'Late' ? 'Terlambat' : 'Hadir' }}</h3>
-                        <p class="text-muted text-center">{{ \Carbon\Carbon::parse($todayAttendance->date)->format('d F Y') }}</p>
-                        <h1 class="text-center text-primary" style="font-size: 3rem; font-weight: bold;">{{ $todayAttendance->time_in ? \Carbon\Carbon::parse($todayAttendance->time_in)->format('H:i') : '--:--' }}</h1>
+            <div class="card-body box-profile d-flex flex-column justify-content-center text-center p-4">
+                @if($todayAttendance)
+                    @php
+                        $statusColor = 'bg-secondary';
+                        $statusIcon = 'far fa-clock';
+                        $statusLabel = 'Belum Absen';
+
+                        if($todayAttendance->status == 'Late') {
+                            $statusColor = 'bg-warning';
+                            $statusIcon = 'fas fa-exclamation-triangle';
+                            $statusLabel = 'Terlambat';
+                        } elseif($todayAttendance->status == 'Permission') {
+                            $statusColor = 'bg-info';
+                            $statusIcon = 'fas fa-file-alt';
+                            $statusLabel = 'Izin / Sakit';
+                        } elseif($todayAttendance->status == 'Present') {
+                            $statusColor = 'bg-success';
+                            $statusIcon = 'far fa-check-circle';
+                            $statusLabel = 'Hadir';
+                        }
+                    @endphp
+
+                    <div class="icon-circle {{ $statusColor }} mb-3 mx-auto" style="width: 100px; height: 100px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                        <i class="{{ $statusIcon }} fa-4x text-white"></i>
+                    </div>
+                    
+                    <h3 class="profile-username">{{ $statusLabel }}</h3>
+                    <p class="text-muted mb-4">{{ \Carbon\Carbon::parse($todayAttendance->date)->translatedFormat('l, d F Y') }}</p>
+                    
+                    @if($todayAttendance->status == 'Permission')
+                         <div class="alert alert-info">
+                            Anda sedang izin hari ini.
+                            <br>
+                            <small>{{ $todayAttendance->description }}</small>
+                         </div>
                     @else
-                        <div class="icon-circle bg-secondary mb-3" style="width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
-                            <i class="far fa-clock fa-3x text-white"></i>
-                        </div>
-                        <h3 class="profile-username text-center">Belum Absen</h3>
-                        <p class="text-muted text-center">{{ \Carbon\Carbon::today()->format('d F Y') }}</p>
-                        
-                        <div class="text-center mt-4">
-                            <a href="{{ route('attendance.scan') }}" class="btn btn-primary btn-lg px-5">
-                                <i class="fas fa-fingerprint mr-2"></i> Klik untuk Absensi
+                        <h1 class="text-primary font-weight-bold mb-1" style="font-size: 3.5rem;">
+                            {{ $todayAttendance->time_in ? \Carbon\Carbon::parse($todayAttendance->time_in)->format('H:i') : '--:--' }}
+                        </h1>
+                        <p class="text-muted">Jam Masuk</p>
+
+                        @if($todayAttendance->time_out)
+                            <h3 class="text-success font-weight-bold mt-3">
+                                {{ \Carbon\Carbon::parse($todayAttendance->time_out)->format('H:i') }}
+                            </h3>
+                            <p class="text-muted">Jam Pulang</p>
+                        @elseif($todayAttendance->status != 'Permission' && $todayAttendance->status != 'Alpha')
+                            <a href="{{ route('attendance.scan') }}" class="btn btn-danger btn-block mt-3">
+                                <i class="fas fa-sign-out-alt mr-2"></i> Absen Pulang
                             </a>
-                        </div>
+                        @endif
                     @endif
-                </div>
+
+                @else
+                    <!-- Belum Absen -->
+                    <div class="icon-circle bg-secondary mb-3 mx-auto" style="width: 100px; height: 100px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                        <i class="far fa-clock fa-4x text-white"></i>
+                    </div>
+                    <h3 class="profile-username">Belum Absen</h3>
+                    <p class="text-muted mb-4">{{ \Carbon\Carbon::today()->translatedFormat('l, d F Y') }}</p>
+                    
+                    <a href="{{ route('attendance.scan') }}" class="btn btn-primary btn-lg btn-block mb-3">
+                        <i class="fas fa-fingerprint mr-2"></i> Klik untuk Absensi
+                    </a>
+
+                    <div class="text-center text-muted mb-2">- ATAU -</div>
+
+                    <a href="{{ route('attendance.permission.create') }}" class="btn btn-outline-warning btn-block">
+                        <i class="fas fa-file-alt mr-2"></i> Ajukan Izin / Sakit
+                    </a>
+                @endif
             </div>
         </div>
     </div>
 
-    <!-- Chart Section -->
-    <div class="col-md-6">
-        <div class="card card-info h-100">
+    <!-- Right Column: Stats & History -->
+    <div class="col-lg-7">
+        <!-- Chart -->
+        <div class="card card-info mb-4">
             <div class="card-header">
-                <h3 class="card-title">Statistik Absensi Bulan Ini</h3>
+                <h3 class="card-title">Statistik Bulan Ini</h3>
             </div>
             <div class="card-body">
-                <canvas id="attendanceChart" style="min-height: 250px; height: 250px; max-height: 250px; max-width: 100%;"></canvas>
+                <canvas id="attendanceChart" style="min-height: 200px; height: 200px; max-height: 200px; max-width: 100%;"></canvas>
             </div>
         </div>
-    </div>
-</div>
 
-<div class="row mt-4">
-    <!-- History Section -->
-    <div class="col-12">
+        <!-- History -->
         <div class="card">
-            <div class="card-header">
+            <div class="card-header border-0">
                 <h3 class="card-title">Riwayat Terakhir</h3>
                 <div class="card-tools">
                     <a href="{{ route('attendance.history') }}" class="btn btn-tool btn-sm">Lihat Semua</a>
                 </div>
             </div>
             <div class="card-body p-0">
-                <ul class="products-list product-list-in-card pl-2 pr-2">
-                    @forelse($attendanceHistory as $history)
-                        @php
-                            $isLate = $history->status == 'Late';
-                            $badgeClass = $isLate ? 'badge-warning' : 'badge-success';
-                            $iconClass = $isLate ? 'text-warning' : 'text-success';
-                        @endphp
-                        <li class="item">
-                            <div class="product-img">
-                                <i class="fas fa-calendar-alt fa-2x {{ $iconClass }}"></i>
-                            </div>
-                            <div class="product-info">
-                                <a href="javascript:void(0)" class="product-title">
-                                    {{ \Carbon\Carbon::parse($history->date)->format('d F Y') }}
-                                    <span class="badge {{ $badgeClass }} float-right">{{ $history->status == 'Late' ? 'Terlambat' : 'Hadir' }}</span>
-                                </a>
-                                <span class="product-description">
-                                    Masuk: {{ \Carbon\Carbon::parse($history->time_in)->format('H:i') }}
-                                    @if($history->time_out)
-                                     - Pulang: {{ \Carbon\Carbon::parse($history->time_out)->format('H:i') }}
+                <div class="table-responsive">
+                    <table class="table table-striped table-valign-middle">
+                        <thead>
+                        <tr>
+                            <th>Tanggal</th>
+                            <th>Status</th>
+                            <th>Jam</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @forelse($attendanceHistory as $history)
+                            @php
+                                $statusClass = 'badge-secondary';
+                                $statusLabel = 'Hadir';
+                                if($history->status == 'Late') { $statusClass = 'badge-warning'; $statusLabel = 'Terlambat'; }
+                                elseif($history->status == 'Permission') { $statusClass = 'badge-info'; $statusLabel = 'Izin'; }
+                                elseif($history->status == 'Alpha') { $statusClass = 'badge-danger'; $statusLabel = 'Alpha'; }
+                                elseif($history->status == 'Present') { $statusClass = 'badge-success'; $statusLabel = 'Hadir'; }
+                            @endphp
+                            <tr>
+                                <td>{{ \Carbon\Carbon::parse($history->date)->format('d/m/Y') }}</td>
+                                <td><span class="badge {{ $statusClass }}">{{ $statusLabel }}</span></td>
+                                <td>
+                                    @if($history->status == 'Permission' || $history->status == 'Alpha')
+                                        -
+                                    @else
+                                        {{ \Carbon\Carbon::parse($history->time_in)->format('H:i') }}
+                                        @if($history->time_out) - {{ \Carbon\Carbon::parse($history->time_out)->format('H:i') }} @endif
                                     @endif
-                                </span>
-                            </div>
-                        </li>
-                    @empty
-                        <li class="item">
-                            <div class="p-3 text-center text-muted">Belum ada riwayat absensi.</div>
-                        </li>
-                    @endforelse
-                </ul>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="3" class="text-center text-muted">Belum ada data.</td>
+                            </tr>
+                        @endforelse
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>

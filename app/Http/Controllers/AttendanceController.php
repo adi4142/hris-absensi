@@ -77,10 +77,96 @@ class AttendanceController extends Controller
                 'attendanceHistory', 
                 'todayAttendance'
             ));
+        } elseif ($user && $user->role && strtolower($user->role->name) === 'hrd') {
+            // HRD Dashboard Logic
+            $today = Carbon::now()->format('Y-m-d');
+            $currentMonth = Carbon::now()->month;
+            $currentYear = Carbon::now()->year;
+
+            // 1. Attendance Stats
+            $totalPresent = Attendance::whereDate('date', $today)->where('status', 'Present')->count();
+            $totalPermission = Attendance::whereDate('date', $today)->where('status', 'Permission')->count();
+            $totalAlpha = Attendance::whereDate('date', $today)->where('status', 'Alpha')->count();
+            $totalLate = Attendance::whereDate('date', $today)->where('status', 'Late')->count();
+
+            // 2. Today's Attendance Table
+            $todayAttendances = Attendance::with(['employee.position', 'employee.division'])
+                ->whereDate('date', $today)
+                ->orderBy('time_in', 'desc')
+                ->get();
+
+            // 3. Payroll Stats
+            $currentPayroll = Payroll::where('period_month', $currentMonth)
+                ->where('period_year', $currentYear)
+                ->first();
+
+            // If no payroll for current month or it has no details, get the latest one that has details
+            if (!$currentPayroll || $currentPayroll->details()->count() == 0) {
+                $fallbackPayroll = Payroll::has('details')
+                    ->orderBy('period_year', 'desc')
+                    ->orderBy('period_month', 'desc')
+                    ->first();
+                
+                if ($fallbackPayroll) {
+                    $currentPayroll = $fallbackPayroll;
+                }
+            }
+
+            $totalSalaryPaid = 0;
+            $totalDeductions = 0;
+            $totalAllowances = 0;
+            $payrollDetails = collect();
+
+            if ($currentPayroll) {
+                $totalSalaryPaid = $currentPayroll->details()->sum('total_salary');
+                $totalDeductions = $currentPayroll->details()->sum('total_deduction');
+                $totalAllowances = $currentPayroll->details()->sum('total_allowance');
+                $payrollDetails = $currentPayroll->details()->with('employee')->limit(5)->get(); // Limit optimized
+            }
+
+            return view('dashboard.hrd', compact(
+                'totalPresent',
+                'totalPermission',
+                'totalAlpha',
+                'totalLate',
+                'todayAttendances',
+                'totalSalaryPaid',
+                'totalDeductions',
+                'totalAllowances',
+                'payrollDetails',
+                'currentPayroll'
+            ));
         }
 
         // Default Dashboard for Admin/Other
         return view('welcome');
+    }
+
+    public function monitoring(Request $request)
+    {
+        $today = Carbon::now()->format('Y-m-d');
+        // Eager load attendance for today
+        $employees = Employee::with(['position', 'division', 'attendance' => function($query) use ($today) {
+            $query->whereDate('date', $today);
+        }])->get();
+
+        return view('attendance.monitoring', compact('employees', 'today'));
+    }
+
+    public function employeeHistory(Request $request, $id)
+    {
+        $employee = Employee::findOrFail($id);
+        
+        $month = $request->input('month', Carbon::now()->month);
+        $year = $request->input('year', Carbon::now()->year);
+
+        $attendances = Attendance::where('employee_nip', $employee->nip)
+            ->whereMonth('date', $month)
+            ->whereYear('date', $year)
+            ->orderBy('date', 'desc')
+            ->get();
+
+        return view('attendance.employee_history', compact('employee', 'attendances', 'month', 'year'));
     }
 
     public function index()
@@ -167,13 +253,38 @@ class AttendanceController extends Controller
     {
         $request->validate([
             'image' => 'required',
-            'nip' => 'required|exists:employees,nip'
+            'nip' => 'required|exists:employees,nip',
+            'latitude' => 'required',
+            'longitude' => 'required',
         ]);
+
+        // Lokasi Kantor (Ganti dengan koordinat kantor Anda)
+        // Contoh: Monas, Jakarta Pusat
+        $officeLat = -6.175110; 
+        $officeLng = 106.827153; 
+        
+        // Jarak Maksimal (dalam meter)
+        $maxDistance = 100;
+
+        $distance = $this->calculateDistance($request->latitude, $request->longitude, $officeLat, $officeLng);
+
+        if ($distance > $maxDistance) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda berada diluar jangkauan kantor. Jarak anda: ' . round($distance) . ' meter.'
+            ]);
+        }
 
         $img = $request->image;
         $folderPath = "public/attendance/";
         
         $image_parts = explode(";base64,", $img);
+        
+        // Handle potential error if image format is invalid
+        if (count($image_parts) < 2) {
+             return response()->json(['success' => false, 'message' => 'Format gambar tidak valid.']);
+        }
+
         $image_type_aux = explode("image/", $image_parts[0]);
         $image_type = $image_type_aux[1];
         
@@ -187,7 +298,6 @@ class AttendanceController extends Controller
         $now = Carbon::now()->toTimeString();
 
         // Check if Late (Example: Late after 08:00 AM)
-        // You can make this dynamic based on Employee Schedule if available
         $lateThreshold = '07:00:00';
         $status = ($now > $lateThreshold) ? 'Late' : 'Present';
         $latePenalty = 50000; // Deduct 50,000 if late
@@ -208,30 +318,77 @@ class AttendanceController extends Controller
 
             // Apply Deduction if Late
             if ($status === 'Late') {
-                $this->applyDeduction($request->nip, 'Potongan Keterlambatan', $latePenalty);
-                return response()->json(['success' => 'Berhasil Absen Masuk! (Terlambat)']);
+                // $this->applyDeduction($request->nip, 'Potongan Keterlambatan', $latePenalty); // Dihitung otomatis saat Generate Payroll
+                return response()->json([
+                    'success' => true, 
+                    'message' => 'Berhasil Absen Masuk! (Anda Terlambat)'
+                ]);
             }
 
-            return response()->json(['success' => 'Berhasil Absen Masuk!']);
+            return response()->json([
+                'success' => true, 
+                'message' => 'Berhasil Absen Masuk! Selamat bekerja.'
+            ]);
         } else {
-            // Check-out
-            if ($attendance->time_out) {
-                return response()->json(['error' => 'Anda sudah absen keluar hari ini.']);
+            // Check if existing record is Permission/Alpha
+            if ($attendance->status == 'Permission' || $attendance->status == 'Alpha') {
+                 return response()->json([
+                    'success' => false, 
+                    'message' => 'Anda sudah mengajukan izin/sakit atau alpha hari ini. Tidak bisa absen.'
+                ]);
             }
 
+            // Check-out logic
+            if ($attendance->time_out) {
+                return response()->json([
+                    'success' => false, 
+                    'message' => 'Anda sudah melakukan absen keluar hari ini.'
+                ]);
+            }
+
+            // Aturan jam 16:00 (Hanya untuk Out)
             if (Carbon::now()->format('H:i') < '16:00') {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Absen keluar hanya bisa dilakukan setelah jam 16.00'
-                ], 403);
+                    'message' => 'Absen keluar hanya bisa dilakukan setelah jam 16:00.'
+                ]);
             }
 
             $attendance->update([
                 'time_out' => $now,
                 'photo_out' => $fileName
             ]);
-            return response()->json(['success' => 'Berhasil Absen Keluar!']);
+
+            return response()->json([
+                'success' => true, 
+                'message' => 'Berhasil Absen Keluar! Hati-hati di jalan.'
+            ]);
         }
+    }
+
+    /**
+     * Hitung Jarak antara dua titik koordinat (Haversine Formula)
+     * Return dalam satuan Meter
+     */
+    private function calculateDistance($lat1, $lon1, $lat2, $lon2)
+    {
+        $earthRadius = 6371000; // Radius bumi dalam meter
+
+        $lat1 = deg2rad($lat1);
+        $lon1 = deg2rad($lon1);
+        $lat2 = deg2rad($lat2);
+        $lon2 = deg2rad($lon2);
+
+        $dLat = $lat2 - $lat1;
+        $dLon = $lon2 - $lon1;
+
+        $a = sin($dLat / 2) * sin($dLat / 2) +
+             cos($lat1) * cos($lat2) *
+             sin($dLon / 2) * sin($dLon / 2);
+        
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+
+        return $earthRadius * $c;
     }
 
     private function applyDeduction($nip, $name, $amount)
@@ -277,7 +434,7 @@ class AttendanceController extends Controller
         $this->applyDeduction($nip, 'Potongan Alpha', $alphaPenalty);
     }
 
-    public function history()
+    public function history(Request $request)
     {
         $user = Auth::user();
         $employee = Employee::where('user_id', $user->user_id)->first();
@@ -286,10 +443,63 @@ class AttendanceController extends Controller
             return redirect()->back()->with('error', 'Data karyawan tidak ditemukan.');
         }
 
-        $attendances = Attendance::where('employee_nip', $employee->nip)
-        ->orderBy('date', 'desc')
-        ->get();
+        $query = Attendance::where('employee_nip', $employee->nip)
+            ->orderBy('date', 'desc')
+            ->orderBy('time_in', 'desc');
+
+        if ($request->has('status') && $request->status) {
+            $query->where('status', $request->status);
+        }
+
+        $attendances = $query->get();
 
         return view('attendance.history', compact('attendances'));
+    }
+
+    public function createPermission()
+    {
+        return view('attendance.permission_create');
+    }
+
+    public function storePermission(Request $request)
+    {
+        $request->validate([
+            'date' => 'required|date',
+            'status' => 'required|in:Permission,Alpha', // Alpha only accessible by admin ideally, but user asked for "Form Izin", so Permission mostly.
+            'description' => 'required|string',
+            'proof_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+        ]);
+
+        $user = Auth::user();
+        $employee = Employee::where('user_id', $user->user_id)->first();
+        
+        if (!$employee) {
+            return back()->with('error', 'Data karyawan tidak ditemukan.');
+        }
+
+        $proofPath = null;
+        if ($request->hasFile('proof_file')) {
+            $proofPath = $request->file('proof_file')->store('public/permission_proofs');
+        }
+
+        // Check if attendance already exists for date
+        $exists = Attendance::where('employee_nip', $employee->nip)
+            ->where('date', $request->date)
+            ->exists();
+
+        if ($exists) {
+            return back()->with('error', 'Anda sudah melakukan absensi atau mengajukan izin pada tanggal tersebut.');
+        }
+
+        Attendance::create([
+            'employee_nip' => $employee->nip,
+            'date' => $request->date,
+            'status' => $request->status, // Permission
+            'description' => $request->description,
+            'proof_file' => $proofPath,
+            // Time in/out null for Permission
+        ]);
+
+        return redirect()->route('attendance.history')->with('success', 'Pengajuan izin berhasil disimpan.');
     }
 }

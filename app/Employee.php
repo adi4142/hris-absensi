@@ -48,4 +48,8 @@ class Employee extends Model
         return $this->hasMany(Attendance::class, 'employee_nip', 'nip');
     }
 
+    public function attendance(){
+        return $this->hasMany(Attendance::class, 'employee_nip', 'nip');
+    }
+
 }

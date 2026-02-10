@@ -34,11 +34,20 @@ class RoleAccess
             return $next($request);
         }
 
-        // HRD: Full Access but Readonly (except GET/HEAD)
+        // HRD: Full Access but Readonly (except GET/HEAD and specific payroll actions)
         if ($role === 'hrd') {
             // Check if method is state-changing (POST, PUT, DELETE, PATCH)
-            // dashboard, index pages are usually GET.
             if (!$request->isMethod('get') && !$request->isMethod('head')) {
+                 // Allow specific payroll actions
+                 if (in_array($routeName, [
+                     'payroll.addComponent', 
+                     'payroll.updateBasic', 
+                     'payroll.deleteComponent', 
+                     'payroll.updateComponent'
+                 ])) {
+                     return $next($request);
+                 }
+
                  return abort(403, 'Akses HRD terbatas hanya untuk melihat data (Read Only).');
             }
             return $next($request);
@@ -48,7 +57,7 @@ class RoleAccess
         if ($role === 'karyawan') {
              // Check if route name starts with 'attendance.'
              // Check if route name starts with 'attendance.' or is 'dashboard'
-             if ($routeName && (strpos($routeName, 'attendance.') === 0 || $routeName === 'dashboard' || $routeName === 'payroll.index' || $routeName === 'profile.index')) {
+             if ($routeName && (strpos($routeName, 'attendance.') === 0 || $routeName === 'dashboard' || $routeName === 'payroll.index' || $routeName === 'payroll.detail' || $routeName === 'profile.index')) {
                  return $next($request);
              }
              return abort(403, 'Karyawan hanya memiliki akses ke menu Absensi.');

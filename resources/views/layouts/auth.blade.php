@@ -26,6 +26,7 @@
       overflow: hidden;
       box-shadow: 0 10px 25px rgba(0,0,0,0.2);
     }
+
   </style>
 </head>
 <body class="hold-transition login-page">

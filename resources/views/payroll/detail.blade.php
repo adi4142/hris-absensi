@@ -26,6 +26,7 @@
 
                     <div class="row">
                         <div class="col-md-6">
+                            @if(auth()->user()->role->name == 'hrd')
                             <form action="{{ url('payroll/detail/'.$detail->payroll_detail_id.'/update-basic') }}" method="POST" class="form-group p-3 bg-light rounded">
                                 @csrf
                                 <label>Gaji Pokok</label>
@@ -39,6 +40,12 @@
                                     </div>
                                 </div>
                             </form>
+                            @else
+                                <div class="form-group p-3 bg-light rounded">
+                                    <label>Gaji Pokok</label>
+                                    <h3>Rp {{ number_format($detail->basic_salary, 0, ',', '.') }}</h3>
+                                </div>
+                            @endif
                         </div>
                         <div class="col-md-6">
                             <div class="callout callout-info">
@@ -82,6 +89,7 @@
                                     </td>
                                     <td>{{ $comp->created_at->format('d/m/Y H:i') }}</td>
                                     <td>
+                                        @if(auth()->user()->role->name == 'hrd')
                                         <a href="{{ url('payroll/detail/'.$detail->payroll_detail_id.'/edit-component/'.$comp->payroll_component_id) }}" class="btn btn-primary btn-sm">
                                             <i class="fas fa-edit"></i> Edit
                                         </a>
@@ -92,6 +100,9 @@
                                                 <i class="fas fa-trash"></i> Hapus
                                             </button>
                                         </form>
+                                        @else
+                                        <span class="text-muted"><i class="fas fa-lock"></i> Read Only</span>
+                                        @endif
                                     </td>
                                 </tr>
                                 @empty
@@ -103,6 +114,7 @@
                         </table>
                     </div>
 
+                    @if(auth()->user()->role->name == 'hrd')
                     <div class="card card-secondary collapsed-card">
                         <div class="card-header">
                             <h3 class="card-title">Tambah Komponen Manual</h3>
@@ -136,6 +148,7 @@
                             </form>
                         </div>
                     </div>
+                    @endif
                 </div>
             </div>
         </div>

@@ -595,61 +595,112 @@
             // Disable button
             btnAbsen.disabled = true;
             const originalHTML = btnAbsen.innerHTML;
-            btnAbsen.innerHTML = '<div class="spinner"></div><span>Memproses...</span>';
+            btnAbsen.innerHTML = '<div class="spinner"></div><span>Mendapatkan Lokasi...</span>';
 
-            // Capture photo
-            const context = canvas.getContext('2d');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            if (!navigator.geolocation) {
+                 statusMessage.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <span>Browser anda tidak mendukung Geolocation.</span>
+                    </div>`;
+                btnAbsen.disabled = false;
+                btnAbsen.innerHTML = originalHTML;
+                return;
+            }
 
-            const imageData = canvas.toDataURL('image/png');
+            navigator.geolocation.getCurrentPosition(function(position) {
+                const latitude = position.coords.latitude;
+                const longitude = position.coords.longitude;
 
-            // Show preview
-            photoPreview.src = imageData;
-            cameraContainer.classList.add('hidden');
-            resultContainer.classList.remove('hidden');
+                btnAbsen.innerHTML = '<div class="spinner"></div><span>Memproses Absensi...</span>';
 
-            // Send to server
-            btnAbsen.disabled = true;
+                // Capture photo
+                const context = canvas.getContext('2d');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            fetch('{{ route("attendance.store") }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                },
-                body: JSON.stringify({
-                    image: imageData,
-                    nip: '{{ $employee->nip }}'
+                const imageData = canvas.toDataURL('image/png');
+
+                // Show preview
+                photoPreview.src = imageData;
+                cameraContainer.classList.add('hidden');
+                resultContainer.classList.remove('hidden');
+
+                fetch('{{ route("attendance.store") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        image: imageData,
+                        nip: '{{ $employee->nip }}',
+                        latitude: latitude,
+                        longitude: longitude
+                    })
+                    })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        statusMessage.innerHTML = `
+                            <div class="alert alert-success">
+                                <i class="fas fa-check-circle"></i>
+                                <span>${data.message}</span>
+                            </div>
+                        `;
+                        // Redirect after 2 seconds
+                        setTimeout(() => {
+                            window.location.href = "{{ route('attendance.dashboard') }}";
+                        }, 2000);
+                    } else {
+                        statusMessage.innerHTML = `
+                            <div class="alert alert-danger">
+                                <i class="fas fa-exclamation-circle"></i>
+                                <span>${data.message || 'Terjadi kesalahan sistem.'}</span>
+                            </div>
+                        `;
+                        // Reset UI if failed
+                        btnAbsen.disabled = false;
+                        btnAbsen.innerHTML = originalHTML;
+                        cameraContainer.classList.remove('hidden');
+                        resultContainer.classList.add('hidden');
+                    }
                 })
-            })
-            .then(response => response.json())
-            .then(data => {
-                statusMessage.innerHTML = `
-                    <div class="alert alert-${data.message.includes('Berhasil') ? 'success' : 'danger'}">
-                        ${data.message}
-                    </div>
-                `;
-            })
-            .catch(error => {
+                .catch(error => {
+                    console.error('Error:', error);
+                    statusMessage.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <span>Terjadi kesalahan koneksi atau server.</span>
+                        </div>`;
+                    // Reset UI if failed
+                    btnAbsen.disabled = false;
+                    btnAbsen.innerHTML = originalHTML;
+                    cameraContainer.classList.remove('hidden');
+                    resultContainer.classList.add('hidden');
+                });
+            }, function(error) {
+                // Error callback for Geolocation
+                let msg = 'Gagal mendapatkan lokasi.';
+                if(error.code == error.PERMISSION_DENIED) {
+                    msg = 'Izin lokasi ditolak. Mohon izinkan akses lokasi.';
+                } else if(error.code == error.POSITION_UNAVAILABLE) {
+                    msg = 'Informasi lokasi tidak tersedia.';
+                } else if(error.code == error.TIMEOUT) {
+                    msg = 'Permintaan lokasi timeout.';
+                }
+
                 statusMessage.innerHTML = `
                     <div class="alert alert-danger">
-                        Terjadi kesalahan
+                        <i class="fas fa-exclamation-circle"></i>
+                        <span>${msg}</span>
                     </div>`;
-            })
-            .finally(() => {
-                // 🔥 INI KUNCI UTAMA
                 btnAbsen.disabled = false;
+                btnAbsen.innerHTML = originalHTML;
             });
-
-            btnAbsen.disabled = false;
-            btnAbsen.innerHTML = originalHTML;
-            cameraContainer.classList.remove('hidden');
-            resultContainer.classList.add('hidden');
-        }
-    );
-}
+        });
+    }
 </script>
 
 </body>

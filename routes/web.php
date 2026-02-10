@@ -90,11 +90,11 @@ Route::middleware(['auth', 'role.access'])->group(function () {
     Route::delete('/payroll/{id}', [PayrollController::class, 'destroy'])->name('payroll.destroy');
     Route::post('/payroll/{id}/generate', [PayrollController::class, 'generate'])->name('payroll.generate');
     Route::get('/payroll/detail/{id}', [PayrollController::class, 'showDetail'])->name('payroll.detail'); // New Route
-    Route::post('/payroll/detail/{id}/add-component', [PayrollController::class, 'addComponent']);
-    Route::post('/payroll/detail/{id}/update-basic', [PayrollController::class, 'updateBasicSalary']);
-    Route::delete('/payroll/detail/{id}/delete-component/{component_id}', [PayrollController::class, 'deleteComponent']);
-    Route::get('/payroll/detail/{id}/edit-component/{component_id}', [PayrollController::class, 'editComponent']);
-    Route::post('/payroll/detail/{id}/update-component/{component_id}', [PayrollController::class, 'updateComponent']);
+    Route::post('/payroll/detail/{id}/add-component', [PayrollController::class, 'addComponent'])->name('payroll.addComponent');
+    Route::post('/payroll/detail/{id}/update-basic', [PayrollController::class, 'updateBasicSalary'])->name('payroll.updateBasic');
+    Route::delete('/payroll/detail/{id}/delete-component/{component_id}', [PayrollController::class, 'deleteComponent'])->name('payroll.deleteComponent');
+    Route::get('/payroll/detail/{id}/edit-component/{component_id}', [PayrollController::class, 'editComponent'])->name('payroll.editComponent');
+    Route::post('/payroll/detail/{id}/update-component/{component_id}', [PayrollController::class, 'updateComponent'])->name('payroll.updateComponent');
 
     Route::get('/employee', [EmployeeController::class, 'index'])->name('employee.index');
     Route::get('/employee/create', [EmployeeController::class, 'create'])->name('employee.create');
@@ -138,6 +138,10 @@ Route::middleware(['auth', 'role.access'])->group(function () {
     Route::post('/attendance/store', [AttendanceController::class, 'store'])->name('attendance.store');
     Route::get('/attendance/history', [AttendanceController::class, 'history'])->name('attendance.history');
     Route::get('/attendance/dashboard', [AttendanceController::class, 'dashboard'])->name('attendance.dashboard');
+    Route::get('/attendance/permission/create', [AttendanceController::class, 'createPermission'])->name('attendance.permission.create');
+    Route::post('/attendance/permission', [AttendanceController::class, 'storePermission'])->name('attendance.permission.store');
+    Route::get('/attendance/monitoring', [AttendanceController::class, 'monitoring'])->name('attendance.monitoring');
+    Route::get('/attendance/history/{id}', [AttendanceController::class, 'employeeHistory'])->name('attendance.employeeHistory');
 
     Route::get('/jobapplication', [JobApplicationController::class, 'index'])->name('jobapplication.index');
     Route::put('/jobapplication/{id}', [JobApplicationController::class, 'update'])->name('jobapplication.update');
