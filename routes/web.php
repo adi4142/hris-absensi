@@ -8,7 +8,6 @@ use App\Http\Controllers\DivisionController;
 use App\Http\Controllers\PositionController;
 use App\Http\Controllers\UsersController;
 use App\Http\Controllers\PayrollController;
-use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\SelectionController;
 use App\Http\Controllers\JobAplicantController;
 use App\Http\Controllers\JobVacancieController;
@@ -16,8 +15,13 @@ use App\Http\Controllers\SelectionApplicantController;
 use App\Http\Controllers\JobApplicationController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\LoginController;
-use App\Http\Controllers\RegisterController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ForgotPasswordController;
+use App\Http\Controllers\RoleVerificationController;
+use App\Http\Controllers\SystemSettingController;
+use App\Http\Controllers\ChatbotController;
+use App\Http\Controllers\LeaveController;
+use App\Http\Controllers\LeaveSettingController;
 
 /*
 |--------------------------------------------------------------------------
@@ -30,21 +34,32 @@ use App\Http\Controllers\ProfileController;
 |
 */
 
-Route::get('/', function () {
-    return view('landing');
-});
 
 // Authentication Routes
-Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
-Route::post('/login', [LoginController::class, 'login']);
+Route::get('/', [LoginController::class, 'showLoginForm'])->name('login');
+Route::post('/login', [LoginController::class, 'login'])->name('login.store');
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
-// Registration Routes
-Route::get('/register', [RegisterController::class, 'showRegistrationForm'])->name('register');
-Route::post('/register', [RegisterController::class, 'register']);
+// Registration & Verification Routes Removed (Admin managed accounts)
+
+// Role Verification Routes (Needs Auth)
+Route::middleware(['auth'])->group(function () {
+    Route::get('/role/verify', [RoleVerificationController::class, 'show'])->name('role.verification.notice');
+    Route::post('/role/verify', [RoleVerificationController::class, 'verify'])->name('role.verification.verify');
+});
+
+// Password Reset Routes
+Route::get('/password/reset', [ForgotPasswordController::class, 'showLinkRequestForm'])->name('password.request');
+Route::post('/password/email', [ForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.email');
+Route::get('/password/verify', [ForgotPasswordController::class, 'showCodeForm'])->name('password.verify.show');
+Route::post('/password/verify', [ForgotPasswordController::class, 'verifyCode'])->name('password.verify');
+Route::get('/password/reset/new', [ForgotPasswordController::class, 'showResetForm'])->name('password.reset.form');
+Route::post('/password/reset/new', [ForgotPasswordController::class, 'reset'])->name('password.update');
 
 Route::middleware(['auth', 'role.access'])->group(function () {
     Route::get('/dashboard', [AttendanceController::class, 'dashboard'])->name('dashboard');
+    Route::post('/chat', [ChatbotController::class, 'chat'])->name('chat');
+    
 
     Route::get('/role', [RoleController::class, 'index'])->name('role.index');
     Route::get('/role/create', [RoleController::class, 'create'])->name('role.create');
@@ -77,9 +92,9 @@ Route::middleware(['auth', 'role.access'])->group(function () {
     Route::get('/user', [UsersController::class, 'index'])->name('user.index');
     Route::get('/user/create', [UsersController::class, 'create'])->name('user.create');
     Route::post('/user', [UsersController::class, 'store'])->name('user.store');
-    Route::get('/user/{id}/edit', [UsersController::class, 'edit'])->name('user.edit');
-    Route::put('/user/{id}', [UsersController::class, 'update'])->name('user.update');
-    Route::delete('/user/{id}', [UsersController::class, 'destroy'])->name('user.destroy');
+    Route::get('/user/{nip}/edit', [UsersController::class, 'edit'])->name('user.edit');
+    Route::put('/user/{nip}', [UsersController::class, 'update'])->name('user.update');
+    Route::delete('/user/{nip}', [UsersController::class, 'destroy'])->name('user.destroy');
 
     Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
     Route::get('/payroll/create', [PayrollController::class, 'create'])->name('payroll.create');
@@ -88,21 +103,18 @@ Route::middleware(['auth', 'role.access'])->group(function () {
     Route::get('/payroll/{id}/edit', [PayrollController::class, 'edit'])->name('payroll.edit');
     Route::put('/payroll/{id}', [PayrollController::class, 'update'])->name('payroll.update');
     Route::delete('/payroll/{id}', [PayrollController::class, 'destroy'])->name('payroll.destroy');
+    Route::delete('/payroll/detail/{id}', [PayrollController::class, 'destroyDetail'])->name('payroll.destroy.detail');
     Route::post('/payroll/{id}/generate', [PayrollController::class, 'generate'])->name('payroll.generate');
-    Route::get('/payroll/detail/{id}', [PayrollController::class, 'showDetail'])->name('payroll.detail'); // New Route
+    Route::get('/payroll/detail/{id}', [PayrollController::class, 'showDetail'])->name('payroll.detail');
+    Route::get('/payroll/download/{id}', [PayrollController::class, 'downloadPdf'])->name('payroll.download');
     Route::post('/payroll/detail/{id}/add-component', [PayrollController::class, 'addComponent'])->name('payroll.addComponent');
     Route::post('/payroll/detail/{id}/update-basic', [PayrollController::class, 'updateBasicSalary'])->name('payroll.updateBasic');
     Route::delete('/payroll/detail/{id}/delete-component/{component_id}', [PayrollController::class, 'deleteComponent'])->name('payroll.deleteComponent');
     Route::get('/payroll/detail/{id}/edit-component/{component_id}', [PayrollController::class, 'editComponent'])->name('payroll.editComponent');
     Route::post('/payroll/detail/{id}/update-component/{component_id}', [PayrollController::class, 'updateComponent'])->name('payroll.updateComponent');
 
-    Route::get('/employee', [EmployeeController::class, 'index'])->name('employee.index');
-    Route::get('/employee/create', [EmployeeController::class, 'create'])->name('employee.create');
-    Route::post('/employee', [EmployeeController::class, 'store'])->name('employee.store');
-    Route::get('/employee/{nip}/edit', [EmployeeController::class, 'edit'])->name('employee.edit');
-    Route::put('/employee/{nip}', [EmployeeController::class, 'update'])->name('employee.update');
-    Route::delete('/employee/{nip}', [EmployeeController::class, 'destroy'])->name('employee.destroy');
-    Route::get('/get-user-email/{id}', [EmployeeController::class, 'getUserEmail']);
+    // Route::get('/employee', [EmployeeController::class, 'index'])->name('employee.index'); // Disabled - Merged to User
+    // ... other employee routes removed
 
     Route::get('/selection', [SelectionController::class, 'index'])->name('selection.index');
     Route::get('/selection/create', [SelectionController::class, 'create'])->name('selection.create');
@@ -134,8 +146,6 @@ Route::middleware(['auth', 'role.access'])->group(function () {
 
     Route::get('/attendance', [AttendanceController::class, 'index'])->name('attendance.index');
     Route::get('/attendance/detail', [AttendanceController::class, 'absensi'])->name('attendance.detail');
-    Route::get('/attendance/scan', [AttendanceController::class, 'scan'])->name('attendance.scan');
-    Route::post('/attendance/store', [AttendanceController::class, 'store'])->name('attendance.store');
     Route::get('/attendance/history', [AttendanceController::class, 'history'])->name('attendance.history');
     Route::get('/attendance/dashboard', [AttendanceController::class, 'dashboard'])->name('attendance.dashboard');
     Route::get('/attendance/permission/create', [AttendanceController::class, 'createPermission'])->name('attendance.permission.create');
@@ -148,6 +158,39 @@ Route::middleware(['auth', 'role.access'])->group(function () {
 
     Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');
     Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
+    Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
+
+    // Fitur Cuti
+    Route::get('/leave', [LeaveController::class, 'index'])->name('leave.index');
+    Route::get('/leave/create', [LeaveController::class, 'create'])->name('leave.create');
+    Route::post('/leave', [LeaveController::class, 'store'])->name('leave.store');
+    
+    // HRD Special Routes for Leave
+    Route::post('/leave/{id}/approve', [LeaveController::class, 'approve'])->name('leave.approve');
+    Route::post('/leave/{id}/reject', [LeaveController::class, 'reject'])->name('leave.reject');
+
+
+    // Superadmin Special Routes
+    Route::middleware(['role.superadmin'])->prefix('superadmin')->name('superadmin.')->group(function () {
+        // System Settings
+        Route::get('/settings', [SystemSettingController::class, 'index'])->name('settings.index');
+        Route::post('/settings', [SystemSettingController::class, 'update'])->name('settings.update');
+        
+        // Payroll Locking
+        Route::post('/payroll/{id}/lock', [PayrollController::class, 'lock'])->name('payroll.lock');
+        Route::post('/payroll/{id}/unlock', [PayrollController::class, 'unlock'])->name('payroll.unlock');
+
+        // Leave Settings
+        Route::get('/leave-settings', [LeaveSettingController::class, 'index'])->name('leave_settings.index');
+        Route::post('/leave-settings', [LeaveSettingController::class, 'update'])->name('leave_settings.update');
+    });
 });
+
+// Public Routes for Attendance Scanning
+Route::get('/attendance/scan', [AttendanceController::class, 'scan'])->name('attendance.scan');
+Route::post('/attendance/store', [AttendanceController::class, 'store'])->name('attendance.store');
+Route::get('/attendance/shortcut-permission', [AttendanceController::class, 'shortcutPermission'])->name('attendance.shortcutPermission');
+
+
 
 

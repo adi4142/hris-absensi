@@ -14,6 +14,7 @@ class Payroll extends Model
         'period_month',
         'period_year',
         'status',
+        'is_locked',
     ];
 
     public function details()

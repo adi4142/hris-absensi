@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Attendance;
-use App\Employee;
 use App\Payroll;
 use App\PayrollDetail;
 use App\PayrollComponent;
 use App\Position;
+use App\Departement;
+use App\Division;
 use App\User;
+use App\LeaveRequest;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
@@ -19,69 +21,75 @@ class AttendanceController extends Controller
     public function dashboard()
     {
         $user = Auth::user();
+        $roleName = $user->role ? strtolower($user->role->name) : '';
         
         // Check if user is Karyawan
-        if ($user && $user->role && strtolower($user->role->name) === 'karyawan') {
-            $employee = Employee::where('user_id', $user->user_id)->first();
-
-            if (!$employee) {
-                return abort(403, 'Data karyawan tidak ditemukan untuk akun ini.');
-            }
-
+        if ($roleName === 'karyawan') {
             // Stats for Dashboard - Counts for current month
             $currentMonth = Carbon::now()->month;
             $currentYear = Carbon::now()->year;
 
-            $totalAttendance = Attendance::where('employee_nip', $employee->nip)
+            $totalAttendance = Attendance::where('employee_nip', $user->nip)
                 ->whereMonth('date', $currentMonth)
                 ->whereYear('date', $currentYear)
                 ->count();
             
-            $totalLate = Attendance::where('employee_nip', $employee->nip)
+            $totalLate = Attendance::where('employee_nip', $user->nip)
                 ->whereMonth('date', $currentMonth)
                 ->whereYear('date', $currentYear)
                 ->where('status', 'Late')
                 ->count();
 
-            // Note: Permission and Alpha might need a separate table or status enum, assuming 'Permission' and 'Alpha' status exists or similar logic. 
-            // For now, I'll assume status field handles this or it's 0 if not implemented yet.
-            $totalPermission = Attendance::where('employee_nip', $employee->nip)
+            $totalPermission = Attendance::where('employee_nip', $user->nip)
                 ->whereMonth('date', $currentMonth)
                 ->whereYear('date', $currentYear)
                 ->where('status', 'Permission')
                 ->count();
 
-            $totalAlpha = Attendance::where('employee_nip', $employee->nip)
+            $totalAlpha = Attendance::where('employee_nip', $user->nip)
                 ->whereMonth('date', $currentMonth)
                 ->whereYear('date', $currentYear)
                 ->where('status', 'Alpha')
                 ->count();
 
             // Attendance History (Last 5 records)
-            $attendanceHistory = Attendance::where('employee_nip', $employee->nip)
+            $attendanceHistory = Attendance::where('employee_nip', $user->nip)
                 ->orderBy('date', 'desc')
                 ->limit(5)
                 ->get();
             
             $today = Carbon::today()->toDateString();
-            $todayAttendance = Attendance::where('employee_nip', $employee->nip)
+            $todayAttendance = Attendance::where('employee_nip', $user->nip)
                 ->where('date', $today)
                 ->first();
 
-            return view('attendance.employee_dashboard', compact(
-                'employee', 
-                'totalAttendance', 
-                'totalLate', 
-                'totalPermission', 
-                'totalAlpha', 
-                'attendanceHistory', 
-                'todayAttendance'
-            ));
-        } elseif ($user && $user->role && strtolower($user->role->name) === 'hrd') {
-            // HRD Dashboard Logic
+            $activeLeave = LeaveRequest::where('nip', $user->nip)
+                ->whereIn('status', [LeaveRequest::STATUS_PENDING, LeaveRequest::STATUS_APPROVED])
+                ->where('start_date', '<=', $today)
+                ->where('end_date', '>=', $today)
+                ->first();
+
+            return view('dashboard.employee_dashboard', [
+                'employee' => $user, 
+                'totalAttendance' => $totalAttendance, 
+                'totalLate' => $totalLate, 
+                'totalPermission' => $totalPermission, 
+                'totalAlpha' => $totalAlpha, 
+                'attendanceHistory' => $attendanceHistory, 
+                'todayAttendance' => $todayAttendance,
+                'activeLeave' => $activeLeave
+            ]);
+        } elseif ($roleName === 'hrd' || $roleName === 'admin' || $roleName === 'superadmin') {
+            // Admin/HRD/Superadmin Dashboard Logic
             $today = Carbon::now()->format('Y-m-d');
             $currentMonth = Carbon::now()->month;
             $currentYear = Carbon::now()->year;
+            
+            // 0. General Stats
+            $totalEmployees = User::whereNotNull('nip')->count();
+            $totalDepartments = Departement::count();
+            $totalPositions = Position::count();
+            $totalDivisions = Division::count();
 
             // 1. Attendance Stats
             $totalPresent = Attendance::whereDate('date', $today)->where('status', 'Present')->count();
@@ -100,7 +108,6 @@ class AttendanceController extends Controller
                 ->where('period_year', $currentYear)
                 ->first();
 
-            // If no payroll for current month or it has no details, get the latest one that has details
             if (!$currentPayroll || $currentPayroll->details()->count() == 0) {
                 $fallbackPayroll = Payroll::has('details')
                     ->orderBy('period_year', 'desc')
@@ -121,41 +128,49 @@ class AttendanceController extends Controller
                 $totalSalaryPaid = $currentPayroll->details()->sum('total_salary');
                 $totalDeductions = $currentPayroll->details()->sum('total_deduction');
                 $totalAllowances = $currentPayroll->details()->sum('total_allowance');
-                $payrollDetails = $currentPayroll->details()->with('employee')->limit(5)->get(); // Limit optimized
+                $payrollDetails = $currentPayroll->details()->with('employee')->limit(5)->get();
             }
 
-            return view('dashboard.hrd', compact(
-                'totalPresent',
-                'totalPermission',
-                'totalAlpha',
-                'totalLate',
-                'todayAttendances',
-                'totalSalaryPaid',
-                'totalDeductions',
-                'totalAllowances',
-                'payrollDetails',
-                'currentPayroll'
+            $pendingLeaves = LeaveRequest::with('user')->where('status', LeaveRequest::STATUS_PENDING)->orderBy('created_at', 'desc')->limit(5)->get();
+
+            // HRD and Superadmin show the detailed dashboard/index
+            if ($roleName === 'hrd' || $roleName === 'admin') {
+                return view('dashboard.hrd', compact(
+                    'totalEmployees', 'totalDepartments', 'totalPositions', 'totalDivisions',
+                    'totalPresent', 'totalPermission', 'totalAlpha', 'totalLate',
+                    'todayAttendances', 'totalSalaryPaid', 'totalDeductions', 'totalAllowances',
+                    'payrollDetails', 'currentPayroll', 'pendingLeaves'
+                ));
+            }
+
+            // For Superadmin, show a master dashboard
+            $recentUsers = User::with(['position', 'division'])->orderBy('created_at', 'desc')->limit(5)->get();
+            $pendingLeaves = LeaveRequest::with('user')->where('status', LeaveRequest::STATUS_PENDING)->orderBy('created_at', 'desc')->limit(5)->get();
+            
+            return view('dashboard.superadmin', compact(
+                'totalEmployees', 'totalDepartments', 'totalPositions', 'totalDivisions',
+                'totalPresent', 'totalPermission', 'totalAlpha', 'totalLate',
+                'recentUsers', 'pendingLeaves'
             ));
         }
 
-        // Default Dashboard for Admin/Other
-        return view('welcome');
+        return abort(403, 'Role: ' . ($roleName ?: 'EMPTY'));
     }
 
     public function monitoring(Request $request)
     {
         $today = Carbon::now()->format('Y-m-d');
         // Eager load attendance for today
-        $employees = Employee::with(['position', 'division', 'attendance' => function($query) use ($today) {
+        $employees = User::whereNotNull('nip')->with(['position', 'division', 'attendances' => function($query) use ($today) {
             $query->whereDate('date', $today);
         }])->get();
 
         return view('attendance.monitoring', compact('employees', 'today'));
     }
 
-    public function employeeHistory(Request $request, $id)
+    public function employeeHistory(Request $request, $nip)
     {
-        $employee = Employee::findOrFail($id);
+        $employee = User::findOrFail($nip);
         
         $month = $request->input('month', Carbon::now()->month);
         $year = $request->input('year', Carbon::now()->year);
@@ -175,16 +190,11 @@ class AttendanceController extends Controller
 
         if ($user && $user->role && strtolower($user->role->name) === 'karyawan') {
              // For Karyawan, show their OWN attendance history in the index view
-             $employee = Employee::where('user_id', $user->user_id)->first();
-             if ($employee) {
-                 $attendances = Attendance::with('employee')
-                    ->where('employee_nip', $employee->nip)
-                    ->orderBy('date', 'desc')
-                    ->orderBy('time_in', 'desc')
-                    ->get();
-             } else {
-                 $attendances = collect(); // Empty collection if no employee data
-             }
+             $attendances = Attendance::with('employee')
+                ->where('employee_nip', $user->nip)
+                ->orderBy('date', 'desc')
+                ->orderBy('time_in', 'desc')
+                ->get();
         } else {
              // Default Admin/HRD View (Show All)
              $attendances = Attendance::with('employee')->orderBy('date', 'desc')->orderBy('time_in', 'desc')->get();
@@ -200,71 +210,100 @@ class AttendanceController extends Controller
         $now = Carbon::now()->toTimeString();
 
         if ($user && $user->role && strtolower($user->role->name) === 'karyawan') {
-             // For Karyawan, show their OWN attendance history in the index view
-             $employee = Employee::where('user_id', $user->user_id)->first();
-             if ($employee) {
-                 $attendances = Attendance::with('employee')
-                    ->where('employee_nip', $employee->nip)
-                    ->orderBy('date', 'desc')
-                    ->orderBy('time_in', 'desc')
-                    ->get();
-             } else {
-                 $attendances = collect(); // Empty collection if no employee data
-             }
+             // For Karyawan, show their OWN attendance history
+             $attendances = Attendance::with('employee')
+                ->where('employee_nip', $user->nip)
+                ->orderBy('date', 'desc')
+                ->orderBy('time_in', 'desc')
+                ->get();
         } else {
              // Default Admin/HRD View (Show All)
              $attendances = Attendance::with('employee')->orderBy('date', 'desc')->orderBy('time_in', 'desc')->get();
         }
 
-        $today = Carbon::today()->toDateString();
-        $todayAttendance = Attendance::where('employee_nip', $employee->nip)
+        $todayAttendance = Attendance::where('employee_nip', $user->nip)
             ->where('date', $today)
             ->first();
-        $attendance = Attendance::where('employee_nip', $employee->nip)
-            ->where('date', $today)
+        
+        $activeLeave = LeaveRequest::where('nip', $user->nip)
+            ->whereIn('status', [LeaveRequest::STATUS_PENDING, LeaveRequest::STATUS_APPROVED])
+            ->where('start_date', '<=', $today)
+            ->where('end_date', '>=', $today)
             ->first();
-        return view('attendance.employee_absensi', compact('attendances', 'todayAttendance', 'today', 'attendance'));
+
+        return view('attendance.employee_absensi', compact('attendances', 'todayAttendance', 'today', 'activeLeave'));
     }
 
     public function scan()
     {
         $user = Auth::user();
+        $attendance = null;
+        $position = null;
 
-        if (!$user) {
-            return redirect()->route('login')->with('error', 'Silakan login terlebih dahulu.');
+        if ($user) {
+            $position = $user->position;
+            $today = Carbon::today()->toDateString();
+            $attendance = Attendance::where('employee_nip', $user->nip)
+                ->where('date', $today)
+                ->first();
+
+            $activeLeave = LeaveRequest::where('nip', $user->nip)
+                ->whereIn('status', [LeaveRequest::STATUS_PENDING, LeaveRequest::STATUS_APPROVED])
+                ->where('start_date', '<=', $today)
+                ->where('end_date', '>=', $today)
+                ->first();
+
+            if ($activeLeave) {
+                $formattedDate = Carbon::parse($activeLeave->end_date)->translatedFormat('d F Y');
+                return redirect()->route('dashboard')->with('error', "Anda sedang cuti sampai tanggal $formattedDate. Anda tidak dapat melakukan scan absensi saat ini.");
+            }
         }
 
-        $employee = Employee::where('user_id', $user->user_id)->first();
-        $position = Position::where('position_id', $employee->position_id)->first();
-
-        if (!$employee) {
-            return redirect()->back()->with('error', 'Akun anda tidak terhubung dengan data karyawan.');
-        }
-
-        $today = Carbon::today()->toDateString();
-        $attendance = Attendance::where('employee_nip', $employee->nip)
-            ->where('date', $today)
-            ->first();
-
-        return view('attendance.scan', compact('employee', 'attendance', 'position'));
+        return view('attendance.scan', compact('user', 'attendance', 'position', 'activeLeave'));
     }
 
     public function store(Request $request)
     {
         $request->validate([
             'image' => 'required',
-            'nip' => 'required|exists:employees,nip',
+            'attendance_code' => 'required|exists:users,attendance_code',
             'latitude' => 'required',
             'longitude' => 'required',
         ]);
 
-        // Lokasi Kantor (Ganti dengan koordinat kantor Anda)
-        // Contoh: Monas, Jakarta Pusat
-        $officeLat = -6.175110; 
-        $officeLng = 106.827153; 
+        // Find Employee by Attendance Code
+        $employee = User::where('attendance_code', $request->attendance_code)->first();
+        if (!$employee) {
+             return response()->json([
+                'success' => false,
+                'message' => 'Kode Absensi tidak valid.'
+            ]);
+        }
+        
+        $currentNip = $employee->nip;
+        $today = Carbon::today()->toDateString();
+
+        // Cek apakah karyawan memiliki cuti (PENDING atau APPROVED) pada hari ini
+        $activeLeave = LeaveRequest::where('nip', $currentNip)
+            ->whereIn('status', [LeaveRequest::STATUS_PENDING, LeaveRequest::STATUS_APPROVED])
+            ->where('start_date', '<=', $today)
+            ->where('end_date', '>=', $today)
+            ->first();
+
+        if ($activeLeave) {
+            $statusLabel = ($activeLeave->status === LeaveRequest::STATUS_APPROVED) ? 'disetujui' : 'diajukan (menunggu persetujuan)';
+            return response()->json([
+                'success' => false,
+                'message' => "Anda tidak bisa melakukan absensi karena Anda memiliki cuti yang sedang $statusLabel untuk hari ini."
+            ]);
+        }
+
+        // Ambil pengaturan lokasi kantor dari system settings
+        $officeLat = \App\SystemSetting::get('office_latitude', -6.235306374734767); 
+        $officeLng = \App\SystemSetting::get('office_longitude', 106.78080237228927); 
         
         // Jarak Maksimal (dalam meter)
-        $maxDistance = 100;
+        $maxDistance = \App\SystemSetting::get('attendance_radius', 100);
 
         $distance = $this->calculateDistance($request->latitude, $request->longitude, $officeLat, $officeLng);
 
@@ -289,7 +328,7 @@ class AttendanceController extends Controller
         $image_type = $image_type_aux[1];
         
         $image_base64 = base64_decode($image_parts[1]);
-        $fileName = $request->nip . '_' . time() . '.png';
+        $fileName = $currentNip . '_' . time() . '.png';
         
         $file = $folderPath . $fileName;
         Storage::put($file, $image_base64);
@@ -297,19 +336,21 @@ class AttendanceController extends Controller
         $today = Carbon::today()->toDateString();
         $now = Carbon::now()->toTimeString();
 
-        // Check if Late (Example: Late after 08:00 AM)
-        $lateThreshold = '07:00:00';
+        // Ambil jam masuk kerja dari pengaturan
+        $lateThreshold = \App\SystemSetting::get('work_start_time', '08:00:00');
+        // Tambahkan detik jika formatnya hanya HH:mm
+        if (strlen($lateThreshold) == 5) $lateThreshold .= ':00';
+        
         $status = ($now > $lateThreshold) ? 'Late' : 'Present';
-        $latePenalty = 50000; // Deduct 50,000 if late
 
-        $attendance = Attendance::where('employee_nip', $request->nip)
+        $attendance = Attendance::where('employee_nip', $currentNip)
             ->where('date', $today)
             ->first();
 
         if (!$attendance) {
             // Check-in
             Attendance::create([
-                'employee_nip' => $request->nip,
+                'employee_nip' => $currentNip,
                 'date' => $today,
                 'time_in' => $now,
                 'photo_in' => $fileName,
@@ -346,11 +387,16 @@ class AttendanceController extends Controller
                 ]);
             }
 
-            // Aturan jam 16:00 (Hanya untuk Out)
-            if (Carbon::now()->format('H:i') < '16:00') {
+            // Ambil jam pulang kerja dari pengaturan
+            $workEndTime = \App\SystemSetting::get('work_end_time', '17:00');
+            // Normalisasi format: ambil hanya HH:mm agar perbandingan konsisten
+            $workEndTimeFormatted = substr($workEndTime, 0, 5); // ambil 'HH:mm'
+            $currentTime = Carbon::now()->format('H:i');
+            
+            if ($currentTime < $workEndTimeFormatted) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Absen keluar hanya bisa dilakukan setelah jam 16:00.'
+                    'message' => 'Absen keluar hanya bisa dilakukan setelah jam ' . $workEndTimeFormatted . '.'
                 ]);
             }
 
@@ -437,13 +483,8 @@ class AttendanceController extends Controller
     public function history(Request $request)
     {
         $user = Auth::user();
-        $employee = Employee::where('user_id', $user->user_id)->first();
 
-        if (!$employee) {
-            return redirect()->back()->with('error', 'Data karyawan tidak ditemukan.');
-        }
-
-        $query = Attendance::where('employee_nip', $employee->nip)
+        $query = Attendance::where('employee_nip', $user->nip)
             ->orderBy('date', 'desc')
             ->orderBy('time_in', 'desc');
 
@@ -458,6 +499,20 @@ class AttendanceController extends Controller
 
     public function createPermission()
     {
+        $user = Auth::user();
+        $today = Carbon::today()->toDateString();
+        
+        $activeLeave = LeaveRequest::where('nip', $user->nip)
+            ->whereIn('status', [LeaveRequest::STATUS_PENDING, LeaveRequest::STATUS_APPROVED])
+            ->where('start_date', '<=', $today)
+            ->where('end_date', '>=', $today)
+            ->first();
+
+        if ($activeLeave) {
+            $formattedDate = Carbon::parse($activeLeave->end_date)->translatedFormat('d F Y');
+            return redirect()->route('dashboard')->with('error', "Anda sedang cuti sampai tanggal $formattedDate. Tidak dapat mengajukan izin baru saat ini.");
+        }
+
         return view('attendance.permission_create');
     }
 
@@ -471,10 +526,16 @@ class AttendanceController extends Controller
         ]);
 
         $user = Auth::user();
-        $employee = Employee::where('user_id', $user->user_id)->first();
         
-        if (!$employee) {
-            return back()->with('error', 'Data karyawan tidak ditemukan.');
+        // Cek apakah ada cuti pada tanggal tersebut
+        $activeLeave = LeaveRequest::where('nip', $user->nip)
+            ->whereIn('status', [LeaveRequest::STATUS_PENDING, LeaveRequest::STATUS_APPROVED])
+            ->where('start_date', '<=', $request->date)
+            ->where('end_date', '>=', $request->date)
+            ->exists();
+
+        if ($activeLeave) {
+            return back()->with('error', 'Anda tidak bisa mengajukan izin pada tanggal tersebut karena sudah memiliki pengajuan cuti.');
         }
 
         $proofPath = null;
@@ -483,7 +544,7 @@ class AttendanceController extends Controller
         }
 
         // Check if attendance already exists for date
-        $exists = Attendance::where('employee_nip', $employee->nip)
+        $exists = Attendance::where('employee_nip', $user->nip)
             ->where('date', $request->date)
             ->exists();
 
@@ -492,7 +553,7 @@ class AttendanceController extends Controller
         }
 
         Attendance::create([
-            'employee_nip' => $employee->nip,
+            'employee_nip' => $user->nip,
             'date' => $request->date,
             'status' => $request->status, // Permission
             'description' => $request->description,
@@ -501,5 +562,24 @@ class AttendanceController extends Controller
         ]);
 
         return redirect()->route('attendance.history')->with('success', 'Pengajuan izin berhasil disimpan.');
+    }
+
+    public function shortcutPermission()
+    {
+        $user = Auth::user();
+        $today = Carbon::today()->toDateString();
+        
+        $activeLeave = LeaveRequest::where('nip', $user->nip)
+            ->whereIn('status', [LeaveRequest::STATUS_PENDING, LeaveRequest::STATUS_APPROVED])
+            ->where('start_date', '<=', $today)
+            ->where('end_date', '>=', $today)
+            ->first();
+
+        if ($activeLeave) {
+            $formattedDate = Carbon::parse($activeLeave->end_date)->translatedFormat('d F Y');
+            return redirect()->route('dashboard')->with('error', "Anda sedang cuti sampai tanggal $formattedDate. Tidak dapat mengajukan izin baru saat ini.");
+        }
+
+        return view('attendance.shortcut_permission');
     }
 }

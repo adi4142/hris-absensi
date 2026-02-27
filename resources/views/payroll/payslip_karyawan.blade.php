@@ -17,9 +17,9 @@
                         <a href="{{ route('payroll.index') }}" class="btn btn-secondary btn-sm">
                             <i class="fas fa-arrow-left"></i> Kembali
                         </a>
-                        <button class="btn btn-success btn-sm" onclick="window.print()">
-                            <i class="fas fa-print"></i> Cetak
-                        </button>
+                        <a href="{{ route('payroll.download', $detail->payroll_detail_id) }}" class="btn btn-danger btn-sm">
+                        <i class="fas fa-download"></i> Download PDF
+                        </a>
                     </div>
                 </div>
                 <div class="card-body">
@@ -28,10 +28,10 @@
                             Dari
                             <address>
                                 <strong>PT. VNEU Teknologi Indonesia</strong><br>
-                                Jl. Sudirman No. 45<br>
-                                Jakarta Pusat<br>
-                                Phone: (021) 123-4567<br>
-                                Email: hr@vneu.com
+                                Jl. Raya Kebayoran Lama No.557<br>
+                                Jakarta Selatan<br>
+                                Phone: (021) 7202351<br>
+                                Email: admin@vneu.co.id
                             </address>
                         </div>
                         <div class="col-sm-6 invoice-col">

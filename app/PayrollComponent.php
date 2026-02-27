@@ -14,6 +14,8 @@ class PayrollComponent extends Model
         'payroll_detail_id',
         'name',
         'type',
+        'calculation_type',
+        'calculation_value',
         'amount',
     ];
 

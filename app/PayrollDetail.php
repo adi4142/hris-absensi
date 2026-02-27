@@ -26,7 +26,7 @@ class PayrollDetail extends Model
 
     public function employee()
     {
-        return $this->belongsTo(Employee::class, 'nip', 'nip');
+        return $this->belongsTo(User::class, 'nip', 'nip');
     }
 
     public function components()

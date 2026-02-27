@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\EmployeeLeaves;
-use App\Employee;
+use App\User;
 class EmployeeLeavesController extends Controller
 {
     /**
@@ -25,7 +25,7 @@ class EmployeeLeavesController extends Controller
      */
     public function create()
     {
-        $employee = Employee::all();
+        $employee = User::whereNotNull('nip')->get();
         return view('employeeleaves.create', compact('employee'));
     }
 

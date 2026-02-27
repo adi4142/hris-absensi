@@ -29,27 +29,41 @@ class RoleAccess
             return $next($request);
         }
 
-        // Admin: Full Access
-        if ($role === 'admin') {
+        // Superadmin: Absolute Full Access
+        if ($role === 'superadmin') {
             return $next($request);
         }
 
-        // HRD: Full Access but Readonly (except GET/HEAD and specific payroll actions)
-        if ($role === 'hrd') {
-            // Check if method is state-changing (POST, PUT, DELETE, PATCH)
-            if (!$request->isMethod('get') && !$request->isMethod('head')) {
-                 // Allow specific payroll actions
-                 if (in_array($routeName, [
-                     'payroll.addComponent', 
-                     'payroll.updateBasic', 
-                     'payroll.deleteComponent', 
-                     'payroll.updateComponent'
-                 ])) {
-                     return $next($request);
-                 }
-
-                 return abort(403, 'Akses HRD terbatas hanya untuk melihat data (Read Only).');
+        // HRD (Staff Operasional): Akses penuh kecuali manajemen User dan Role
+        if ($role === 'hrd' || $role === 'admin') {
+            // Proteksi Manajemen Role
+            if ($routeName && strpos($routeName, 'role.') === 0) {
+                return abort(403, 'Hanya Superadmin yang dapat mengelola hak akses role.');
             }
+            
+            // Proteksi Manajemen User
+            $restrictedUserRoutes = ['user.create', 'user.store', 'user.edit', 'user.update', 'user.destroy'];
+            if ($routeName && in_array($routeName, $restrictedUserRoutes)) {
+                return abort(403, 'Hanya Superadmin yang dapat mengelola akun pengguna.');
+            }
+
+            // Proteksi Manajemen Divisi, Departement, Jabatan (Read-only)
+            $readOnlyModules = ['division', 'departement', 'position'];
+            foreach ($readOnlyModules as $module) {
+                $restrictedModuleRoutes = ["$module.create", "$module.store", "$module.edit", "$module.update", "$module.destroy"];
+                if ($routeName && in_array($routeName, $restrictedModuleRoutes)) {
+                    return abort(403, 'Hanya Superadmin yang dapat mengelola data ' . $module . '. Anda hanya memiliki hak akses lihat.');
+                }
+            }
+
+            // Proteksi Payroll (Hanya boleh lihat daftar dan detail)
+            if ($routeName && strpos($routeName, 'payroll.') === 0) {
+                $allowedPayrollRoutes = ['payroll.index', 'payroll.show', 'payroll.detail', 'payroll.download'];
+                if (!in_array($routeName, $allowedPayrollRoutes)) {
+                    return abort(403, 'Hanya Superadmin yang dapat memproses atau mengubah data penggajian.');
+                }
+            }
+
             return $next($request);
         }
 
@@ -57,10 +71,12 @@ class RoleAccess
         if ($role === 'karyawan') {
              // Check if route name starts with 'attendance.'
              // Check if route name starts with 'attendance.' or is 'dashboard'
-             if ($routeName && (strpos($routeName, 'attendance.') === 0 || $routeName === 'dashboard' || $routeName === 'payroll.index' || $routeName === 'payroll.detail' || $routeName === 'profile.index')) {
+             if ($routeName && (strpos($routeName, 'attendance.') === 0 || $routeName === 'dashboard' || 
+             $routeName === 'payroll.index' || $routeName === 'payroll.detail' || $routeName === 'profile.index' || 
+             $routeName === 'payroll.download' || $routeName === 'profile.update' || strpos($routeName, 'leave.') === 0)) {
                  return $next($request);
              }
-             return abort(403, 'Karyawan hanya memiliki akses ke menu Absensi.');
+             return abort(403, 'Karyawan hanya memiliki akses ke menu Absensi dan Cuti.');
         }
 
         // Tamu: Only apply and view status

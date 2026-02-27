@@ -16,9 +16,11 @@
   <link rel="stylesheet" href="{{ asset('AdminLTE/dist/css/adminlte.min.css') }}">
   <style>
     body {
-      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%) !important;
+      background: url("") no-repeat center center fixed;
+      background-size: cover;
+      opacity: 5;
     }
-    .login-box, .register-box {
+    .login-box {
       width: 400px;
     }
     .card {

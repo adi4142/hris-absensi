@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title', 'Detail Payroll')
 @section('page_title', 'Detail Penggajian')
@@ -11,17 +11,10 @@
                 <div class="card-header">
                     <h3 class="card-title">
                         <i class="fas fa-calendar-alt mr-1"></i>
-                        Periode: {{ date("F", mktime(0, 0, 0, $payroll->period_month, 10)) }} {{ $payroll->period_year }}
+                        Periode: {{ \Carbon\Carbon::create()->month($payroll->period_month)->translatedFormat('F') }} {{ $payroll->period_year }}
                     </h3>
                     <div class="card-tools">
-                        @if($payroll->details->isEmpty())
-                        <form action="{{ route('payroll.generate', $payroll->payroll_id) }}" method="POST" class="d-inline">
-                            @csrf
-                            <button type="submit" class="btn btn-success btn-sm">
-                                <i class="fas fa-magic"></i> Generate Data Karyawan
-                            </button>
-                        </form>
-                        @endif
+
                         <a href="{{ route('payroll.index') }}" class="btn btn-secondary btn-sm">
                             <i class="fas fa-arrow-left"></i> Kembali
                         </a>
@@ -56,10 +49,17 @@
                                     <td class="text-right text-success">Rp {{ number_format($detail->total_allowance, 0, ',', '.') }}</td>
                                     <td class="text-right text-danger">Rp {{ number_format($detail->total_deduction, 0, ',', '.') }}</td>
                                     <td class="text-right font-weight-bold">Rp {{ number_format($detail->total_salary, 0, ',', '.') }}</td>
-                                    <td class="text-center">
+                                    <td class="text-right">
                                         <a href="{{ url('payroll/detail/'.$detail->payroll_detail_id) }}" class="btn btn-info btn-sm">
                                             <i class="fas fa-list"></i> Lihat Rincian
                                         </a>
+                                        <form action="{{ route('payroll.destroy.detail', $detail->payroll_detail_id) }}" method="POST" class="d-inline">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" onclick="return confirm('Yakin ingin menghapus detail payroll ini?')" class="btn btn-danger btn-sm">
+                                                <i class="fas fa-trash"></i> Hapus
+                                            </button>
+                                        </form>
                                     </td>
                                 </tr>
                                 @empty

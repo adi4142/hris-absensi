@@ -277,6 +277,16 @@
             color: var(--text-color);
         }
 
+        .text-center.text-muted.mb-2 {
+            text-align: center;
+            color: var(--text-light);
+            font-size: 13px;
+            margin-bottom: 16px;
+            margin-top: 16px;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
         /* Button */
         .btn-scan {
             width: 100%;
@@ -301,6 +311,10 @@
 
         .btn-scan.check-out {
             background: linear-gradient(135deg, var(--danger-color) 0%, #DC2626 100%);
+        }
+
+        .btn-scan.permission {
+            background: linear-gradient(135deg, var(--warning-color) 0%, #F59E0B 100%);
         }
 
         .btn-scan:hover:not(:disabled) {
@@ -463,7 +477,7 @@
 <div class="scan-container">
     <!-- Header -->
     <div class="header">
-        <a href="{{ route('attendance.detail') }}" class="back-button">
+        <a href="{{ Auth::check() ? route('dashboard') : url('/') }}" class="back-button">
             <i class="fas fa-arrow-left"></i>
         </a>
         <div class="header-title">Absensi Kehadiran</div>
@@ -472,11 +486,11 @@
 
     <!-- User Info -->
     <div class="user-info">
-        <div class="user-name">{{ $employee->name }}</div>
+        <div class="user-name">{{ $user ? $user->name : 'Mode Absensi Umum' }}</div>
         <div class="user-details">
             <div class="user-nip">
                 <i class="fas fa-id-card"></i>
-                <span>{{ $employee->nip }}</span>
+                <span>{{ $user ? $user->attendance_code ?? '-' : 'Masukkan Kode Absensi' }}</span>
             </div>
             <div class="user-date">
                 <i class="far fa-calendar-alt"></i>
@@ -485,66 +499,98 @@
         </div>
     </div>
 
-    @if(!$attendance || !$attendance->time_out)
+    @if(!$attendance || ($attendance && !$attendance->time_out))
     <!-- Camera Section -->
     <div class="camera-section">
-        <div class="instruction">
-            <i class="fas fa-info-circle"></i>
-            <span>Posisikan wajah Anda di dalam frame</span>
-        </div>
-
-        <div id="camera_container" class="camera-container">
-            <video id="video" autoplay playsinline></video>
-            <canvas id="canvas"></canvas>
-            <div class="camera-overlay">
-                <div class="camera-frame"></div>
-                <div class="camera-corners">
-                    <div class="corner top-left"></div>
-                    <div class="corner top-right"></div>
-                    <div class="corner bottom-left"></div>
-                    <div class="corner bottom-right"></div>
+        @if(isset($activeLeave) && $activeLeave)
+            <div class="alert alert-info border-0 shadow-sm mb-4" style="background: #eef2ff; color: #4338ca; border-left: 4px solid #6366f1;">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-calendar-minus mr-3 fa-2x"></i>
+                    <div>
+                        <div class="font-weight-bold">Anda sedang Cuti</div>
+                        <small>Anda memiliki pengajuan cuti yang {{ $activeLeave->status === 'APPROVED' ? 'telah disetujui' : 'sedang diajukan' }} untuk hari ini. Absensi dinonaktifkan.</small>
+                    </div>
                 </div>
             </div>
-        </div>
-
-        <div id="result_container" class="hidden">
-            <img id="photo_preview" src="" class="photo-preview">
-        </div>
-
-        <!-- Status Info -->
-        @if(!$attendance)
-        <div class="status-info-box">
-            <div class="status-icon">
-                <i class="fas fa-sign-in-alt"></i>
+            <a href="{{ route('dashboard') }}" class="btn-scan" style="background: #6366f1; text-decoration: none;">
+                <i class="fas fa-home"></i>
+                <span>Kembali ke Dashboard</span>
+            </a>
+        @else
+            <!-- Attendance Code Input -->
+            <div style="margin-bottom: 10px;">
+                <label for="attendance_code_input" style="display: block; font-weight: 500; margin-bottom: 8px; color: #4B5563;">Kode Absensi (5-8 Digit)</label>
+                <input type="text" id="attendance_code_input" class="form-control" 
+                    value="{{ $user ? $user->attendance_code ?? '' : '' }}" 
+                    placeholder="Masukkan Kode Absensi"
+                    maxlength="8"
+                    style="width: 100%; padding: 12px; border: 1px solid #D1D5DB; border-radius: 8px; font-size: 16px;">
             </div>
-            <div class="status-text">
-                <div class="status-label">Status Absensi</div>
-                <div class="status-value">Belum Absen Masuk</div>
-            </div>
-        </div>
 
-        <button id="btn-absen" class="btn-scan check-in">
-            <i class="fas fa-fingerprint"></i>
-            <span>Absen Masuk</span>
-        </button>
-        @elseif(!$attendance->time_out)
-        <div class="status-info-box">
-            <div class="status-icon" style="background: var(--success-color);">
-                <i class="fas fa-check"></i>
+            <div class="instruction">
+                <i class="fas fa-info-circle"></i>
+                <span>Posisikan wajah Anda di dalam frame</span>
             </div>
-            <div class="status-text">
-                <div class="status-label">Masuk: {{ \Carbon\Carbon::parse($attendance->time_in)->format('H:i') }}</div>
-                <div class="status-value">Belum Absen Keluar</div>
-            </div>
-        </div>
 
-        <button id="btn-absen" class="btn-scan check-out">
-            <i class="fas fa-sign-out-alt"></i>
-            <span>Absen Keluar</span>
-        </button>
+            <div id="camera_container" class="camera-container">
+                <video id="video" autoplay playsinline></video>
+                <canvas id="canvas"></canvas>
+                <div class="camera-overlay">
+                    <div class="camera-frame"></div>
+                    <div class="camera-corners">
+                        <div class="corner top-left"></div>
+                        <div class="corner top-right"></div>
+                        <div class="corner bottom-left"></div>
+                        <div class="corner bottom-right"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="result_container" class="hidden">
+                <img id="photo_preview" src="" class="photo-preview">
+            </div>
+
+            <!-- Status Info -->
+            @if(!$attendance)
+            <div class="status-info-box">
+                <div class="status-icon">
+                    <i class="fas fa-sign-in-alt"></i>
+                </div>
+                <div class="status-text">
+                    <div class="status-label">Status Absensi</div>
+                    <div class="status-value">Belum Absen Masuk</div>
+                </div>
+            </div>
+
+            <button id="btn-absen" class="btn-scan check-in">
+                <i class="fas fa-camera"></i>
+                <span>Ambil Foto & Absen</span>
+            </button>
+
+            <div class="text-center text-muted mb-2">- ATAU -</div>
+
+            <a href="{{ route('attendance.shortcutPermission') }}" class="btn btn-scan permission">
+                <i class="fas fa-file-alt mr-2"></i> Ajukan Izin / Sakit
+            </a>
+            @elseif(!$attendance->time_out)
+            <div class="status-info-box">
+                <div class="status-icon" style="background: var(--success-color);">
+                    <i class="fas fa-check"></i>
+                </div>
+                <div class="status-text">
+                    <div class="status-label">Masuk: {{ \Carbon\Carbon::parse($attendance->time_in)->format('H:i') }}</div>
+                    <div class="status-value">Belum Absen Keluar</div>
+                </div>
+            </div>
+
+            <button id="btn-absen" class="btn-scan check-out">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Absen Keluar</span>
+            </button>
+            @endif
+
+            <div id="status_message"></div>
         @endif
-
-        <div id="status_message"></div>
     </div>
     @else
     <!-- Completed State -->
@@ -554,7 +600,9 @@
         </div>
         <div class="completed-text">Absensi Selesai!</div>
         <div class="completed-subtext">Anda sudah menyelesaikan absensi hari ini</div>
-        <a href="{{ route('attendance.index') }}" class="btn-back">Kembali ke Dashboard</a>
+        <a href="{{ Auth::check() ? route('attendance.dashboard') : url('/') }}" class="btn-back">
+            Kembali ke {{ Auth::check() ? 'Dashboard' : 'Beranda' }}
+        </a>
     </div>
     @endif
 </div>
@@ -608,6 +656,20 @@
                 return;
             }
 
+            const codeInput = document.getElementById('attendance_code_input');
+            const codeValue = codeInput ? codeInput.value : '';
+            
+            if (!codeValue) {
+                 statusMessage.innerHTML = `
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <span>Mohon masukkan Kode Absensi Anda.</span>
+                    </div>`;
+                btnAbsen.disabled = false;
+                btnAbsen.innerHTML = originalHTML;
+                return;
+            }
+
             navigator.geolocation.getCurrentPosition(function(position) {
                 const latitude = position.coords.latitude;
                 const longitude = position.coords.longitude;
@@ -635,7 +697,7 @@
                     },
                     body: JSON.stringify({
                         image: imageData,
-                        nip: '{{ $employee->nip }}',
+                        attendance_code: codeValue,
                         latitude: latitude,
                         longitude: longitude
                     })
@@ -651,7 +713,11 @@
                         `;
                         // Redirect after 2 seconds
                         setTimeout(() => {
-                            window.location.href = "{{ route('attendance.dashboard') }}";
+                            @if(Auth::check())
+                                window.location.href = "{{ route('attendance.dashboard') }}";
+                            @else
+                                window.location.href = "{{ url('/') }}";
+                            @endif
                         }, 2000);
                     } else {
                         statusMessage.innerHTML = `

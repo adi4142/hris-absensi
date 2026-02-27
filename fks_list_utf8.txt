@@ -1,0 +1,6 @@
+Foreign keys pointing to users:
+Table: activity_logs, Column: user_id, Constraint: activity_logs_user_id_foreign, RefCol: user_id
+Table: attendances, Column: employee_nip, Constraint: attendances_employee_nip_foreign, RefCol: nip
+Table: employees_leaves, Column: nip, Constraint: employees_leaves_nip_foreign, RefCol: nip
+Table: job_applicants, Column: user_id, Constraint: job_applicants_user_id_foreign, RefCol: user_id
+Table: payrolls_detail, Column: nip, Constraint: payrolls_detail_nip_foreign, RefCol: nip

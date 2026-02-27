@@ -300,8 +300,7 @@
             <li><a href="#contact">Kontak</a></li>
         </ul>
         <div class="btn-auth">
-            <a href="{{ route('login') }}" class="btn btn-outline">Login</a>
-            <a href="{{ route('register') }}" class="btn btn-primary">Daftar</a>
+            <a href="{{ route('login') }}" class="btn btn-primary px-5 shadow-lg">Login Staff</a>
         </div>
     </nav>
 
@@ -310,7 +309,7 @@
             <h1>Kelola SDM Anda dengan <span>Lebih Cerdas</span></h1>
             <p>Sistem Informasi Sumber Daya Manusia (HRIS) yang komprehensif untuk membantu perusahaan Anda mengelola karyawan, absensi, payroll, dan rekrutmen dalam satu platform terpadu.</p>
             <div class="btn-auth">
-                <a href="{{ route('register') }}" class="btn btn-primary">Mulai Sekarang</a>
+                <a href="{{ route('attendance.scan') }}" class="btn btn-primary">Absen Sekarang</a>
                 <a href="#features" class="btn btn-outline">Pelajari Lebih Lanjut</a>
             </div>
         </div>

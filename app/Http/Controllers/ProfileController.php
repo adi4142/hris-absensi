@@ -7,14 +7,46 @@ use App\User;
 
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class ProfileController extends Controller
 {
     public function index()
     {
-        $user = User::with(['employee.position', 'employee.departement', 'employee.division', 'role'])->find(auth()->user()->user_id);
+        $user = User::with(['position', 'departement', 'division', 'role'])->find(auth()->user()->nip);
 
         return view('profile.index', compact('user'));
+    }
+
+    public function update(Request $request)
+    {
+        $user = Auth::user();
+        
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email,' . $user->nip . ',nip',
+            'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+        ]);
+
+        $userData = [
+            'name' => $request->name,
+            'email' => $request->email,
+        ];
+
+        if ($request->hasFile('photo')) {
+            // Delete old photo if exists
+            if ($user->photo) {
+                Storage::delete('public/profiles/' . $user->photo);
+            }
+
+            $photoName = time() . '.' . $request->photo->extension();
+            $request->photo->storeAs('public/profiles', $photoName);
+            $userData['photo'] = $photoName;
+        }
+
+        $user->update($userData);
+
+        return back()->with('success', 'Profil berhasil diperbarui.');
     }
 
     public function updatePassword(Request $request)

@@ -8,6 +8,9 @@ use App\Role;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 
+use App\Mail\VerifyEmailCode;
+use Illuminate\Support\Facades\Mail;
+
 class RegisterController extends Controller
 {
     public function showRegistrationForm()
@@ -23,6 +26,12 @@ class RegisterController extends Controller
 
     public function register(Request $request)
     {
+        // If user exists but is not verified, delete it to allow re-registration
+        $existingUnverifiedUser = User::where('email', $request->email)->whereNull('email_verified_at')->first();
+        if ($existingUnverifiedUser) {
+            $existingUnverifiedUser->delete();
+        }
+
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
@@ -30,15 +39,29 @@ class RegisterController extends Controller
             'roles_id' => ['required', 'exists:roles,roles_id'],
         ]);
 
-        $user = User::create([
+        $verification_code = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        // Store registration data in session
+        $registration_data = [
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'roles_id' => $request->roles_id,
-        ]);
+            'verification_code' => $verification_code,
+        ];
 
-        Auth::login($user);
+        session(['registration_temp' => $registration_data]);
 
-        return redirect()->route('login');
+        try {
+            // Send email
+            Mail::to($request->email)->send(new VerifyEmailCode($verification_code));
+        } catch (\Exception $e) {
+            // If mail fails, we can still proceed to verification page if we want,
+            // but for debugging purposes, let's show the error if in local
+            return back()->withInput()->withErrors(['email' => 'Gagal mengirim email verifikasi. Pastikan pengaturan email sudah benar. Error: ' . $e->getMessage()]);
+        }
+
+        return redirect()->route('verification.notice', ['email' => $request->email])
+            ->with('success', 'Silahkan cek email Anda untuk mendapatkan kode verifikasi.');
     }
 }

@@ -6,15 +6,12 @@
 <div class="login-box">
   <div class="card card-outline card-primary">
     <div class="card-header text-center">
-      <a href="/">haha</a>
-      <span class="h1">
-        <b>HRIS</b> System
-      </span>
+      <a href="/" class="h1"><b>HRIS</b> System</a>
     </div>
     <div class="card-body">
       <p class="login-box-msg">Login untuk masuk ke sistem</p>
 
-      <form action="{{ route('login') }}" method="POST">
+      <form action="{{ route('login.store') }}" method="POST" novalidate>
         @csrf
         <div class="input-group mb-3">
           <input type="email" name="email" class="form-control @error('email') is-invalid @enderror" placeholder="Email" value="{{ old('email') }}" required autofocus>
@@ -23,8 +20,8 @@
               <span class="fas fa-envelope"></span>
             </div>
           </div>
-          @error('email')
-              <span class="invalid-feedback" role="alert">
+          @error('email') 
+              <span class="invalid-feedback">
                   <strong>{{ $message }}</strong>
               </span>
           @enderror
@@ -60,10 +57,7 @@
       </form>
 
       <p class="mb-1 mt-3">
-        <a href="#">Lupa Password?</a>
-      </p>
-      <p class="mb-0">
-        <a href="{{ route('register') }}" class="text-center">Register a new membership</a>
+        <a href="{{ route('password.request') }}">Lupa Password?</a>
       </p>
     </div>
     <!-- /.card-body -->

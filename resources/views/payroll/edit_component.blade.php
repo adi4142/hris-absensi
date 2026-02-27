@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title', 'Edit Komponen Gaji')
 @section('page_title', 'Edit Komponen Gaji')
@@ -28,9 +28,27 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>Nominal (Rp)</label>
-                            <input type="number" name="amount" class="form-control" value="{{ $component->amount }}" min="0" required>
+                            <label>Tipe Perhitungan</label>
+                            <select name="calculation_type" class="form-control" id="calc_type" onchange="updateLabel()" required>
+                                <option value="fixed" {{ $component->calculation_type == 'fixed' ? 'selected' : '' }}>Nominal Tetap (Rp)</option>
+                                <option value="percentage" {{ $component->calculation_type == 'percentage' ? 'selected' : '' }}>Persenan (%)</option>
+                            </select>
                         </div>
+                        <div class="form-group">
+                            <label id="amount_label">{{ $component->calculation_type == 'percentage' ? 'Persentase (%)' : 'Nominal (Rp)' }}</label>
+                            <input type="number" step="any" name="amount" class="form-control" value="{{ $component->calculation_value ?? $component->amount }}" required>
+                        </div>
+                        <script>
+                            function updateLabel() {
+                                const type = document.getElementById('calc_type').value;
+                                const label = document.getElementById('amount_label');
+                                if (type === 'percentage') {
+                                    label.innerText = 'Persentase (%)';
+                                } else {
+                                    label.innerText = 'Nominal (Rp)';
+                                }
+                            }
+                        </script>
                         <div class="form-group d-flex justify-content-between">
                             <a href="{{ route('payroll.detail', $detail->payroll_detail_id) }}" class="btn btn-secondary">Batal</a>
                             <button type="submit" class="btn btn-primary">Simpan Perubahan</button>

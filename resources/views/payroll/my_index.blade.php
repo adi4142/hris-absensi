@@ -22,6 +22,8 @@
                                 <tr>
                                     <th>Periode</th>
                                     <th>Status</th>
+                                    <th>Total Tunjangan</th>
+                                    <th>Total Potongan</th>
                                     <th>Total Gaji Bersih</th>
                                     <th>Aksi</th>
                                 </tr>
@@ -30,7 +32,7 @@
                                 @foreach($payrollDetails as $detail)
                                 <tr>
                                     <td>
-                                        <span class="font-weight-bold">{{ date("F", mktime(0, 0, 0, $detail->payroll->period_month, 10)) }} {{ $detail->payroll->period_year }}</span>
+                                        <span class="font-weight-bold">{{ \Carbon\Carbon::create()->month($detail->payroll->period_month)->translatedFormat('F') }} {{ $detail->payroll->period_year }}</span>
                                     </td>
                                     <td>
                                         @if($detail->payroll->status == 'calculated')
@@ -40,6 +42,16 @@
                                         @elseif($detail->payroll->status == 'paid')
                                             <span class="badge badge-success">Sudah Dibayar</span>
                                         @endif
+                                    </td>
+                                    <td>
+                                        <span class="font-weight-bold text-success">
+                                            Rp {{ number_format($detail->total_allowance, 0, ',', '.') }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="font-weight-bold text-danger">
+                                            Rp {{ number_format($detail->total_deduction, 0, ',', '.') }}
+                                        </span>
                                     </td>
                                     <td class="font-weight-bold text-success">
                                         Rp {{ number_format($detail->total_salary, 0, ',', '.') }}

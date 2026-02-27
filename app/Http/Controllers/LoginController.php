@@ -17,29 +17,38 @@ class LoginController extends Controller
         $credentials = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required'],
-        ]);
+        ],
+            [
+                'email.required' => 'Email wajib diisi.',
+                'email.email' => 'Email harus disertai dengan @.',
+                'password.required' => 'Password wajib diisi.',
+            ]);
 
         if (Auth::attempt($credentials)) {
-            $request->session()->regenerate();
-
             $user = Auth::user();
+
+            if (!$user->email_verified_at) {
+                Auth::logout();
+                return back()->with('error', 'Email Anda belum diverifikasi. Silahkan hubungi Admin untuk aktivasi akun.');
+            }
+
+            $request->session()->regenerate();
             // Check if user has role and get the role name
             $role = $user->role ? strtolower($user->role->name) : '';
 
-            if ($role === 'admin' || $role === 'hrd') {
-                return redirect()->intended(route('dashboard'));
+            if ($role === 'superadmin' || $role === 'admin') {
+                return redirect()->route('dashboard');
             } elseif ($role === 'karyawan') {
                 return redirect()->route('attendance.dashboard');
-            } elseif ($role === 'tamu') {
-                return redirect()->route('applicant.dashboard');
+            } elseif ($role === 'hrd') {
+                return redirect()->route('dashboard');
             }
 
             return redirect()->intended(route('dashboard'));
         }
 
-        return back()->withErrors([
-            'email' => 'Email atau password yang anda masukkan salah.',
-        ]);
+        return back()->withErrors(['email' => 'Email atau password yang anda masukkan salah.'])
+                     ->withInput();
     }
 
     public function logout(Request $request)

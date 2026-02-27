@@ -13,7 +13,7 @@ class Kernel extends ConsoleKernel
      * @var array
      */
     protected $commands = [
-        //
+        Commands\DetectAlphaAttendance::class,
     ];
 
     /**
@@ -24,7 +24,8 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // $schedule->command('inspire')->hourly();
+        // Jalankan deteksi Alpha setiap hari kerja pada jam 17:00
+        $schedule->command('attendance:detect-alpha')->dailyAt('17:00');
     }
 
     /**
