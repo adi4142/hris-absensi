@@ -159,13 +159,14 @@ class AttendanceController extends Controller
 
     public function monitoring(Request $request)
     {
-        $today = Carbon::now()->format('Y-m-d');
-        // Eager load attendance for today
-        $employees = User::whereNotNull('nip')->with(['position', 'division', 'attendances' => function($query) use ($today) {
-            $query->whereDate('date', $today);
+        $date = $request->input('date', Carbon::now()->format('Y-m-d'));
+        
+        // Eager load attendance for the selected date
+        $employees = User::whereNotNull('nip')->with(['position', 'division', 'attendances' => function($query) use ($date) {
+            $query->whereDate('date', $date);
         }])->get();
 
-        return view('attendance.monitoring', compact('employees', 'today'));
+        return view('attendance.monitoring', compact('employees', 'date'));
     }
 
     public function employeeHistory(Request $request, $nip)

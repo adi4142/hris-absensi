@@ -55,18 +55,40 @@ class UsersController extends Controller
         }
 
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8',
-            'roles_id' => 'required|exists:roles,roles_id',
-            'nip' => 'nullable|string|max:25|unique:users',
-            'phone' => 'nullable|string|max:20',
-            'departement_id' => 'nullable|exists:departements,departement_id',
-            'position_id' => 'nullable|exists:positions,position_id',
-            'division_id' => 'nullable|exists:divisions,division_id',
-            'gender' => 'nullable|in:Male,Female',
-            'date_of_birth' => 'nullable|date',
-            'basic_salary' => 'nullable|numeric|min:0',
+            'name' => ['required','string','max:255'],
+            'email' => ['required','string','email','max:255','unique:users'],
+            'password' => ['required','string','min:8'],
+            'roles_id' => ['required','exists:roles,roles_id'],
+            'nip' => ['required','string','max:25','unique:users'],
+            'phone' => ['required','string','max:20'],
+            'departement_id' => 'required|exists:departements,departement_id',
+            'position_id' => 'required|exists:positions,position_id',
+            'division_id' => 'required|exists:divisions,division_id',
+            'gender' => 'required|in:Male,Female',
+            'date_of_birth' => 'required|date',
+        ],[
+            'name.required' => 'Nama wajib diisi.',
+            'email.required' => 'Email wajib diisi.',
+            'email.email' => 'Email tidak valid.',
+            'email.unique' => 'Email sudah terdaftar.',
+            'password.required' => 'Password wajib diisi.',
+            'password.min' => 'Password minimal 8 karakter.',
+            'roles_id.required' => 'Role wajib diisi.',
+            'nip.required' => 'NIP wajib diisi.',
+            'nip.unique' => 'NIP sudah terdaftar.',
+            'phone.required' => 'Nomor telepon wajib diisi.',
+            'phone.max' => 'Nomor telepon maksimal 20 karakter.',
+            'departement_id.required' => 'Departemen wajib diisi.',
+            'departement_id.exists' => 'Departemen tidak valid.',
+            'position_id.required' => 'Posisi wajib diisi.',
+            'position_id.exists' => 'Posisi tidak valid.',
+            'division_id.required' => 'Divisi wajib diisi.',
+            'division_id.exists' => 'Divisi tidak valid.',
+            'gender.required' => 'Jenis kelamin wajib diisi.',
+            'gender.in' => 'Jenis kelamin tidak valid.',
+            'date_of_birth.required' => 'Tanggal lahir wajib diisi.',
+            'date_of_birth.date' => 'Tanggal lahir tidak valid.',
+            'date_of_birth.date' => 'Tanggal lahir tidak valid.',
         ]);
 
         // Security Check: Non-Superadmin cannot create Superadmin or HRD
@@ -89,7 +111,6 @@ class UsersController extends Controller
             'address' => $request->address,
             'gender' => $request->gender,
             'date_of_birth' => $request->date_of_birth,
-            'basic_salary' => $request->basic_salary ?? 0,
             'email_verified_at' => now(), // Auto-verify accounts created by admin
             'is_role_verified' => true,    // Auto-verify roles
         ];
@@ -175,7 +196,6 @@ class UsersController extends Controller
             'division_id' => 'nullable|exists:divisions,division_id',
             'gender' => 'nullable|in:Male,Female',
             'date_of_birth' => 'nullable|date',
-            'basic_salary' => 'nullable|numeric|min:0',
         ]);
 
         // 2. Security Check: Non-Superadmin cannot promote someone to Superadmin or HRD
@@ -197,7 +217,6 @@ class UsersController extends Controller
             'address' => $request->address,
             'gender' => $request->gender,
             'date_of_birth' => $request->date_of_birth,
-            'basic_salary' => $request->basic_salary ?? 0,
         ];
 
         if ($request->password) {

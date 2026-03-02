@@ -182,6 +182,14 @@
               <p>Payroll</p>
             </a>
           </li>
+          @if($role == 'hrd' || $role == 'admin' || $role == 'superadmin')
+          <li class="nav-item">
+            <a href="{{ route('salary.index') }}" class="nav-link {{ request()->is('salary*') ? 'active' : '' }}">
+              <i class="nav-icon fas fa-hand-holding-usd"></i>
+              <p>Manajemen Gaji</p>
+            </a>
+          </li>
+          @endif
 
           <li class="nav-header">PENGATURAN SISTEM</li>
           @if(Auth::user()->role && strtolower(Auth::user()->role->name) == 'superadmin')

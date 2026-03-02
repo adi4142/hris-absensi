@@ -96,6 +96,10 @@ Route::middleware(['auth', 'role.access'])->group(function () {
     Route::put('/user/{nip}', [UsersController::class, 'update'])->name('user.update');
     Route::delete('/user/{nip}', [UsersController::class, 'destroy'])->name('user.destroy');
 
+    Route::get('/salary', [\App\Http\Controllers\BasicSalaryController::class, 'index'])->name('salary.index');
+    Route::post('/salary', [\App\Http\Controllers\BasicSalaryController::class, 'store'])->name('salary.store');
+    Route::delete('/salary/{id}', [\App\Http\Controllers\BasicSalaryController::class, 'destroy'])->name('salary.destroy');
+
     Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
     Route::get('/payroll/create', [PayrollController::class, 'create'])->name('payroll.create');
     Route::post('/payroll', [PayrollController::class, 'store'])->name('payroll.store');

@@ -1,0 +1,6 @@
+﻿Migrating: 2026_02_19_130000_change_primary_key_to_nip_in_users_table
+Migrated:  2026_02_19_130000_change_primary_key_to_nip_in_users_table (0.02 seconds)
+Migrating: 2026_02_26_103758_create_leave_category_table
+Migrated:  2026_02_26_103758_create_leave_category_table (0.12 seconds)
+Migrating: 2026_03_02_110207_create_basic_salaries_table
+Migrated:  2026_03_02_110207_create_basic_salaries_table (0.21 seconds)

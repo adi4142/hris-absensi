@@ -151,10 +151,6 @@
                                 <input type="date" name="date_of_birth" id="date_of_birth" class="form-control" value="{{ old('date_of_birth', $edituser->date_of_birth) }}">
                             </div>
                             <div class="col-md-4 mb-3">
-                                <label for="basic_salary">Gaji Pokok (Rp)</label>
-                                <input type="number" name="basic_salary" id="basic_salary" class="form-control" placeholder="Contoh: 5000000" value="{{ old('basic_salary', $edituser->basic_salary) }}">
-                            </div>
-                            <div class="col-md-4 mb-3">
                                 <label for="address">Alamat Lengkap</label>
                                 <textarea name="address" id="address" class="form-control" rows="1" placeholder="Alamat sesuai KTP">{{ old('address', $edituser->address) }}</textarea>
                             </div>
